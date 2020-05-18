@@ -21,6 +21,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsacmpca "github.com/aws/aws-sdk-go-v2/service/acmpca"
+	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,17 +41,17 @@ import (
 const (
 	errUnexpectedObject = "The managed resource is not an ACMPCA resource"
 	errClient           = "cannot create a new ACMPCA client"
-	// errGet              = "failed to get ACMPCA with name"
-	errCreate = "failed to create the ACMPCA resource"
-	errDelete = "failed to delete the ACMPCA resource"
+	errGet              = "failed to get ACMPCA with name"
+	errCreate           = "failed to create the ACMPCA resource"
+	errDelete           = "failed to delete the ACMPCA resource"
 	// errUpdate           = "failed to update the ACMPCA resource"
-	// errSDK              = "empty ACMPCA received from ACMPCA API"
+	errSDK = "empty ACMPCA received from ACMPCA API"
 
-	// errKubeUpdateFailed = "cannot late initialize ACMPCA"
-	// errUpToDateFailed   = "cannot check whether object is up-to-date"
+	errKubeUpdateFailed = "cannot late initialize ACMPCA"
+	errUpToDateFailed   = "cannot check whether object is up-to-date"
 
 	// errAddTagsFailed        = "cannot add tags to ACMPCA"
-	// errListTagsFailed       = "failed to list tags for ACMPCA"
+	errListTagsFailed = "failed to list tags for ACMPCA"
 	// errRemoveTagsFailed     = "failed to remove tags for ACMPCA"
 	// errRenewalFailed        = "failed to renew ACMPCA"
 	// errIneligibleForRenewal = "ineligible to renew ACMPCA"
@@ -101,10 +102,57 @@ type external struct {
 }
 
 func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.ExternalObservation, error) {
+	cr, ok := mgd.(*v1alpha1.CertificateAuthority)
+	if !ok {
+		return managed.ExternalObservation{}, errors.New(errUnexpectedObject)
+	}
+
+	if cr.Status.AtProvider.CertificateAuthorityArn == "" {
+		return managed.ExternalObservation{
+			ResourceExists: false,
+		}, nil
+	}
+
+	response, err := e.client.DescribeCertificateAuthorityRequest(&awsacmpca.DescribeCertificateAuthorityInput{
+		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+	}).Send(ctx)
+
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errGet)
+	}
+
+	if response.CertificateAuthority == nil {
+		return managed.ExternalObservation{}, errors.New(errSDK)
+	}
+
+	certificateAuthority := *response.CertificateAuthority
+	current := cr.Spec.ForProvider.DeepCopy()
+	acmpca.LateInitializeCertificateAuthority(&cr.Spec.ForProvider, &certificateAuthority)
+
+	if !cmp.Equal(current, &cr.Spec.ForProvider) {
+		if err := e.kube.Update(ctx, cr); err != nil {
+			return managed.ExternalObservation{}, errors.Wrap(err, errKubeUpdateFailed)
+		}
+	}
+
+	cr.SetConditions(runtimev1alpha1.Available())
+
+	tags, err := e.client.ListTagsRequest(&awsacmpca.ListTagsInput{
+		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+	}).Send(ctx)
+
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errListTagsFailed)
+	}
+
+	upToDate := acmpca.IsCertificateAuthorityUpToDate(cr.Spec.ForProvider, certificateAuthority, tags.Tags)
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errUpToDateFailed)
+	}
 
 	return managed.ExternalObservation{
-		ResourceUpToDate: true,
 		ResourceExists:   true,
+		ResourceUpToDate: upToDate,
 	}, nil
 }
 
@@ -167,6 +215,10 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 				return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
 			}
 		}
+	}
+
+	if err != nil {
+		return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
 	}
 
 	_, err = e.client.DeleteCertificateAuthorityRequest(&awsacmpca.DeleteCertificateAuthorityInput{
