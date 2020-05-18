@@ -295,6 +295,10 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 		}
 	}
 
+	if err != nil {
+		return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
+	}
+
 	_, err = e.client.DeleteCertificateAuthorityRequest(&awsacmpca.DeleteCertificateAuthorityInput{
 		CertificateAuthorityArn:     aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
 		PermanentDeletionTimeInDays: cr.Spec.ForProvider.PermanentDeletionTimeInDays,
