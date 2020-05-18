@@ -128,9 +128,6 @@ spec:
               description: CertificateAuthorityParameters defines the desired state
                 of an AWS CertificateAuthority.
               properties:
-                certificateAuthorityType:
-                  description: Type of the certificate authority
-                  type: string
                 certificateRenewalPermissionAllow:
                   description: The CertificateRenewalPermissionAllow decides Permissions
                     for ACM renewals
@@ -200,6 +197,9 @@ spec:
                 state:
                   description: State in which the subject of the certificate is located
                   type: string
+                status:
+                  description: Status of the certificate authority
+                  type: string
                 surname:
                   description: Surname
                   type: string
@@ -223,8 +223,10 @@ spec:
                 title:
                   description: Title
                   type: string
+                type:
+                  description: Type of the certificate authority
+                  type: string
               required:
-              - certificateAuthorityType
               - certificateRenewalPermissionAllow
               - commonName
               - country
@@ -236,6 +238,7 @@ spec:
               - s3BucketName
               - signingAlgorithm
               - state
+              - type
               type: object
             providerRef:
               description: ProviderReference specifies the provider that will be used
