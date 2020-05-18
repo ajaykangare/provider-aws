@@ -53,7 +53,11 @@ type CertificateAuthorityStatus struct {
 // CertificateAuthorityParameters defines the desired state of an AWS CertificateAuthority.
 type CertificateAuthorityParameters struct {
 	// Type of the certificate authority
-	CertificateAuthorityType string `json:"certificateAuthorityType"`
+	Type string `json:"type"`
+
+	// Status of the certificate authority
+	// +optional
+	Status string `json:"status"`
 
 	// Token to distinguish between calls to RequestCertificate.
 	// +optional

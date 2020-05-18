@@ -6,7 +6,7 @@ metadata:
     crossplane.io/external-name: example
 spec:
   forProvider:
-    certificateAuthorityType: root
+    type: root
     certificateRenewalPermissionAllow: true
     commonName: www.example.com
     country: IN

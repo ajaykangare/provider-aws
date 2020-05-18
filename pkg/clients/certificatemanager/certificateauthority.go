@@ -19,6 +19,7 @@ type Client interface {
 	DeletePermissionRequest(*acmpca.DeletePermissionInput) acmpca.DeletePermissionRequest
 	UpdateCertificateAuthorityRequest(*acmpca.UpdateCertificateAuthorityInput) acmpca.UpdateCertificateAuthorityRequest
 	DescribeCertificateAuthorityRequest(*acmpca.DescribeCertificateAuthorityInput) acmpca.DescribeCertificateAuthorityRequest
+	ListTagsRequest(*acmpca.ListTagsInput) acmpca.ListTagsRequest
 }
 
 // NewClient returns a new client using AWS credentials as JSON encoded data.
@@ -35,9 +36,9 @@ func GenerateCreateCertificateAuthorityInput(p *v1alpha1.CertificateAuthorityPar
 		RevocationConfiguration:           generateRevocationConfiguration(p),
 	}
 
-	if strings.EqualFold(p.CertificateAuthorityType, "ROOT") {
+	if strings.EqualFold(p.Type, "ROOT") {
 		m.CertificateAuthorityType = acmpca.CertificateAuthorityTypeRoot
-	} else if strings.EqualFold(p.CertificateAuthorityType, "SUBORDINATE") {
+	} else if strings.EqualFold(p.Type, "SUBORDINATE") {
 		m.CertificateAuthorityType = acmpca.CertificateAuthorityTypeSubordinate
 	}
 
@@ -119,13 +120,63 @@ func generateRevocationConfiguration(p *v1alpha1.CertificateAuthorityParameters)
 	return m
 }
 
-// // GenerateCertificateAuthorityStatus is used to produce CertificateAuthorityExternalStatus from acm.certificateAuthorityStatus
-// func GenerateCertificateAuthorityStatus(certificate acm.CertificateDetail) v1alpha1.CertificateAuthorityExternalStatus {
-// 	return v1alpha1.CertificateAuthorityExternalStatus{
-// 		CertificateAuthorityArn: aws.StringValue(certificate.CertificateAuthorityArn),
-// 	}
+// LateInitializeCertificateAuthority fills the empty fields in *v1beta1.CertificateAuthorityParameters with
+// the values seen in acmpca.CertificateAuthority.
+func LateInitializeCertificateAuthority(in *v1alpha1.CertificateAuthorityParameters, certificateAuthority *acmpca.CertificateAuthority) { // nolint:gocyclo
+	if certificateAuthority == nil {
+		return
+	}
 
-// }
+	if in.Type == "" && string(certificateAuthority.Type) != "" {
+		in.Type = string(certificateAuthority.Type)
+	}
+
+	if in.Status == "" && string(certificateAuthority.Status) != "" {
+		in.Status = string(certificateAuthority.Status)
+	}
+
+	if aws.StringValue(in.SerialNumber) == "" && aws.StringValue(certificateAuthority.Serial) != "" {
+		in.SerialNumber = certificateAuthority.Serial
+	}
+
+}
+
+// IsCertificateAuthorityUpToDate checks whether there is a change in any of the modifiable fields.
+func IsCertificateAuthorityUpToDate(p v1alpha1.CertificateAuthorityParameters, cd acmpca.CertificateAuthority, tags []acmpca.Tag) bool { // nolint:gocyclo
+
+	if !strings.EqualFold(aws.StringValue(p.CustomCname), aws.StringValue(cd.RevocationConfiguration.CrlConfiguration.CustomCname)) {
+		return false
+	}
+
+	if !strings.EqualFold(aws.StringValue(p.S3BucketName), aws.StringValue(cd.RevocationConfiguration.CrlConfiguration.S3BucketName)) {
+		return false
+	}
+
+	if p.RevocationConfigurationEnabled != cd.RevocationConfiguration.CrlConfiguration.Enabled {
+		return false
+	}
+
+	if p.ExpirationInDays != cd.RevocationConfiguration.CrlConfiguration.ExpirationInDays {
+		return false
+	}
+
+	if len(p.Tags) != len(tags) {
+		return false
+	}
+
+	pTags := make(map[string]string, len(p.Tags))
+	for _, tag := range p.Tags {
+		pTags[tag.Key] = tag.Value
+	}
+	for _, tag := range tags {
+		val, ok := pTags[aws.StringValue(tag.Key)]
+		if !ok || !strings.EqualFold(val, aws.StringValue(tag.Value)) {
+			return false
+		}
+	}
+
+	return !p.CertificateRenewalPermissionAllow
+}
 
 // IsErrorNotFound returns true if the error code indicates that the item was not found
 func IsErrorNotFound(err error) bool {
