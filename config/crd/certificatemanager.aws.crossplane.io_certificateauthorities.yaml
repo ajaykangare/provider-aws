@@ -325,8 +325,11 @@ spec:
                   description: String that contains the ARN of the issued certificate
                     Authority
                   type: string
+                renewalPermission:
+                  type: boolean
               required:
               - certificateArn
+              - renewalPermission
               type: object
             bindingPhase:
               description: Phase represents the binding phase of a managed resource

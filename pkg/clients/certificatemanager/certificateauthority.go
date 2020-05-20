@@ -14,7 +14,6 @@ import (
 type Client interface {
 	CreateCertificateAuthorityRequest(*acmpca.CreateCertificateAuthorityInput) acmpca.CreateCertificateAuthorityRequest
 	CreatePermissionRequest(*acmpca.CreatePermissionInput) acmpca.CreatePermissionRequest
-	// TagCertificateAuthorityRequest(*acmpca.TagCertificateAuthorityInput) acmpca.TagCertificateAuthorityOutput
 	DeleteCertificateAuthorityRequest(*acmpca.DeleteCertificateAuthorityInput) acmpca.DeleteCertificateAuthorityRequest
 	DeletePermissionRequest(*acmpca.DeletePermissionInput) acmpca.DeletePermissionRequest
 	UpdateCertificateAuthorityRequest(*acmpca.UpdateCertificateAuthorityInput) acmpca.UpdateCertificateAuthorityRequest
