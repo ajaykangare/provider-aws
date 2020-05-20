@@ -20,6 +20,8 @@ type Client interface {
 	UpdateCertificateAuthorityRequest(*acmpca.UpdateCertificateAuthorityInput) acmpca.UpdateCertificateAuthorityRequest
 	DescribeCertificateAuthorityRequest(*acmpca.DescribeCertificateAuthorityInput) acmpca.DescribeCertificateAuthorityRequest
 	ListTagsRequest(*acmpca.ListTagsInput) acmpca.ListTagsRequest
+	UntagCertificateAuthorityRequest(*acmpca.UntagCertificateAuthorityInput) acmpca.UntagCertificateAuthorityRequest
+	TagCertificateAuthorityRequest(*acmpca.TagCertificateAuthorityInput) acmpca.TagCertificateAuthorityRequest
 }
 
 // NewClient returns a new client using AWS credentials as JSON encoded data.
@@ -32,8 +34,8 @@ func GenerateCreateCertificateAuthorityInput(p *v1alpha1.CertificateAuthorityPar
 	m := &acmpca.CreateCertificateAuthorityInput{
 
 		IdempotencyToken:                  p.IdempotencyToken,
-		CertificateAuthorityConfiguration: generateCertificateAuthorityConfiguration(p),
-		RevocationConfiguration:           generateRevocationConfiguration(p),
+		CertificateAuthorityConfiguration: GenerateCertificateAuthorityConfiguration(p),
+		RevocationConfiguration:           GenerateRevocationConfiguration(p),
 	}
 
 	if strings.EqualFold(p.Type, "ROOT") {
@@ -53,8 +55,8 @@ func GenerateCreateCertificateAuthorityInput(p *v1alpha1.CertificateAuthorityPar
 	return m
 }
 
-// generateCertificateAuthorityConfiguration from certificateAuthorityParameters
-func generateCertificateAuthorityConfiguration(p *v1alpha1.CertificateAuthorityParameters) *acmpca.CertificateAuthorityConfiguration { // nolint:gocyclo
+// GenerateCertificateAuthorityConfiguration from certificateAuthorityParameters
+func GenerateCertificateAuthorityConfiguration(p *v1alpha1.CertificateAuthorityParameters) *acmpca.CertificateAuthorityConfiguration { // nolint:gocyclo
 
 	m := &acmpca.CertificateAuthorityConfiguration{
 		Subject: &acmpca.ASN1Subject{
@@ -105,8 +107,8 @@ func generateCertificateAuthorityConfiguration(p *v1alpha1.CertificateAuthorityP
 
 }
 
-// generateRevocationConfiguration from certificateAuthorityParameters
-func generateRevocationConfiguration(p *v1alpha1.CertificateAuthorityParameters) *acmpca.RevocationConfiguration {
+// GenerateRevocationConfiguration from certificateAuthorityParameters
+func GenerateRevocationConfiguration(p *v1alpha1.CertificateAuthorityParameters) *acmpca.RevocationConfiguration {
 
 	m := &acmpca.RevocationConfiguration{
 		CrlConfiguration: &acmpca.CrlConfiguration{
@@ -118,6 +120,39 @@ func generateRevocationConfiguration(p *v1alpha1.CertificateAuthorityParameters)
 	}
 
 	return m
+}
+
+// GenerateCertificateAuthorityStatus from status
+func GenerateCertificateAuthorityStatus(status string) acmpca.CertificateAuthorityStatus {
+
+	var m acmpca.CertificateAuthorityStatus
+	switch strings.ToUpper(status) {
+	case "CREATING":
+		m = acmpca.CertificateAuthorityStatusCreating
+	case "PENDING_CERTIFICATE":
+		m = acmpca.CertificateAuthorityStatusPendingCertificate
+	case "ACTIVE":
+		m = acmpca.CertificateAuthorityStatusActive
+	case "DELETED":
+		m = acmpca.CertificateAuthorityStatusDeleted
+	case "DISABLED":
+		m = acmpca.CertificateAuthorityStatusDisabled
+	case "EXPIRED":
+		m = acmpca.CertificateAuthorityStatusExpired
+	case "FAILED":
+		m = acmpca.CertificateAuthorityStatusFailed
+	}
+	return m
+}
+
+// GenerateUpdateCertificateAuthorityInput from CertificateAuthority
+func GenerateUpdateCertificateAuthorityInput(cr *v1alpha1.CertificateAuthority) *acmpca.UpdateCertificateAuthorityInput {
+
+	return &acmpca.UpdateCertificateAuthorityInput{
+		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+		RevocationConfiguration: GenerateRevocationConfiguration(&cr.Spec.ForProvider),
+		Status:                  GenerateCertificateAuthorityStatus(cr.Spec.ForProvider.Status),
+	}
 }
 
 // LateInitializeCertificateAuthority fills the empty fields in *v1beta1.CertificateAuthorityParameters with
@@ -142,30 +177,30 @@ func LateInitializeCertificateAuthority(in *v1alpha1.CertificateAuthorityParamet
 }
 
 // IsCertificateAuthorityUpToDate checks whether there is a change in any of the modifiable fields.
-func IsCertificateAuthorityUpToDate(p v1alpha1.CertificateAuthorityParameters, cd acmpca.CertificateAuthority, tags []acmpca.Tag) bool { // nolint:gocyclo
+func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.CertificateAuthority, tags []acmpca.Tag) bool { // nolint:gocyclo
 
-	if !strings.EqualFold(aws.StringValue(p.CustomCname), aws.StringValue(cd.RevocationConfiguration.CrlConfiguration.CustomCname)) {
+	if !strings.EqualFold(aws.StringValue(p.Spec.ForProvider.CustomCname), aws.StringValue(cd.RevocationConfiguration.CrlConfiguration.CustomCname)) {
 		return false
 	}
 
-	if !strings.EqualFold(aws.StringValue(p.S3BucketName), aws.StringValue(cd.RevocationConfiguration.CrlConfiguration.S3BucketName)) {
+	if !strings.EqualFold(aws.StringValue(p.Spec.ForProvider.S3BucketName), aws.StringValue(cd.RevocationConfiguration.CrlConfiguration.S3BucketName)) {
 		return false
 	}
 
-	if p.RevocationConfigurationEnabled != cd.RevocationConfiguration.CrlConfiguration.Enabled {
+	if p.Spec.ForProvider.RevocationConfigurationEnabled != cd.RevocationConfiguration.CrlConfiguration.Enabled {
 		return false
 	}
 
-	if p.ExpirationInDays != cd.RevocationConfiguration.CrlConfiguration.ExpirationInDays {
+	if p.Spec.ForProvider.ExpirationInDays != cd.RevocationConfiguration.CrlConfiguration.ExpirationInDays {
 		return false
 	}
 
-	if len(p.Tags) != len(tags) {
+	if len(p.Spec.ForProvider.Tags) != len(tags) {
 		return false
 	}
 
-	pTags := make(map[string]string, len(p.Tags))
-	for _, tag := range p.Tags {
+	pTags := make(map[string]string, len(p.Spec.ForProvider.Tags))
+	for _, tag := range p.Spec.ForProvider.Tags {
 		pTags[tag.Key] = tag.Value
 	}
 	for _, tag := range tags {
@@ -175,7 +210,7 @@ func IsCertificateAuthorityUpToDate(p v1alpha1.CertificateAuthorityParameters, c
 		}
 	}
 
-	return !p.CertificateRenewalPermissionAllow
+	return p.Spec.ForProvider.CertificateRenewalPermissionAllow == p.Status.AtProvider.RenewalPermission
 }
 
 // IsErrorNotFound returns true if the error code indicates that the item was not found
