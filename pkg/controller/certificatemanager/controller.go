@@ -44,8 +44,8 @@ const (
 	errGet              = "failed to get ACMPCA with name"
 	errCreate           = "failed to create the ACMPCA resource"
 	errDelete           = "failed to delete the ACMPCA resource"
-	errUpdate           = "failed to update the ACMPCA resource"
-	errSDK              = "empty ACMPCA received from ACMPCA API"
+	// errUpdate           = "failed to update the ACMPCA resource"
+	errSDK = "empty ACMPCA received from ACMPCA API"
 
 	errKubeUpdateFailed = "cannot late initialize ACMPCA"
 	errUpToDateFailed   = "cannot check whether object is up-to-date"
@@ -53,7 +53,7 @@ const (
 	errAddTagsFailed        = "cannot add tags to ACMPCA"
 	errListTagsFailed       = "failed to list tags for ACMPCA"
 	errRemoveTagsFailed     = "failed to remove tags for ACMPCA"
-	errCertificateAuthority = "failed to update ACMPCA"
+	errCertificateAuthority = "failed to update the ACMPCA resource"
 	errPermissionFailed     = "failed to update ACMPCA permission"
 )
 
@@ -118,7 +118,7 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 	}).Send(ctx)
 
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errGet)
+		return managed.ExternalObservation{}, errors.Wrap(err, errGet)
 	}
 
 	if response.CertificateAuthority == nil {
@@ -278,6 +278,10 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
 	}).Send(ctx)
 
+	if err != nil {
+		return errors.Wrap(err, errDelete)
+	}
+
 	if response != nil {
 		if response.CertificateAuthority.Status != awsacmpca.CertificateAuthorityStatusPendingCertificate {
 			_, err = e.client.UpdateCertificateAuthorityRequest(&awsacmpca.UpdateCertificateAuthorityInput{
@@ -286,13 +290,9 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 			}).Send(ctx)
 
 			if err != nil {
-				return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errUpdate)
+				return errors.Wrap(err, errDelete)
 			}
 		}
-	}
-
-	if err != nil {
-		return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
 	}
 
 	_, err = e.client.DeleteCertificateAuthorityRequest(&awsacmpca.DeleteCertificateAuthorityInput{
@@ -304,5 +304,5 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 		cr.Status.AtProvider.CertificateAuthorityArn = ""
 	}
 
-	return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
+	return errors.Wrap(err, errDelete)
 }
