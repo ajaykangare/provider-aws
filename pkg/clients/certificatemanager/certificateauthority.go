@@ -214,8 +214,11 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 
 // IsErrorNotFound returns true if the error code indicates that the item was not found
 func IsErrorNotFound(err error) bool {
-	if acmpcaErr, ok := err.(awserr.Error); ok && acmpcaErr.Code() == acmpca.ErrCodeResourceNotFoundException {
-		return true
+	if awsErr, ok := err.(awserr.Error); ok {
+		if awsErr.Code() == acmpca.ErrCodeResourceNotFoundException {
+			return true
+		}
 	}
+
 	return false
 }
