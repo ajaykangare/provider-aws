@@ -44,8 +44,8 @@ const (
 	errGet              = "failed to get ACMPCA with name"
 	errCreate           = "failed to create the ACMPCA resource"
 	errDelete           = "failed to delete the ACMPCA resource"
-	errUpdate           = "failed to update the ACMPCA resource"
-	errSDK              = "empty ACMPCA received from ACMPCA API"
+	// errUpdate           = "failed to update the ACMPCA resource"
+	errSDK = "empty ACMPCA received from ACMPCA API"
 
 	errKubeUpdateFailed = "cannot late initialize ACMPCA"
 	errUpToDateFailed   = "cannot check whether object is up-to-date"
@@ -293,10 +293,6 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 				return errors.Wrap(err, errDelete)
 			}
 		}
-	}
-
-	if err != nil {
-		return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
 	}
 
 	_, err = e.client.DeleteCertificateAuthorityRequest(&awsacmpca.DeleteCertificateAuthorityInput{
