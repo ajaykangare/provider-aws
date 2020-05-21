@@ -19,6 +19,7 @@ package cache
 import (
 	"context"
 	"reflect"
+	"sort"
 
 	commonaws "github.com/aws/aws-sdk-go-v2/aws"
 	elasticacheservice "github.com/aws/aws-sdk-go-v2/service/elasticache"
@@ -69,6 +70,7 @@ func SetupReplicationGroup(mgr ctrl.Manager, l logging.Logger) error {
 			resource.ManagedKind(v1beta1.ReplicationGroupGroupVersionKind),
 			managed.WithExternalConnecter(&connecter{client: mgr.GetClient(), newClientFn: elasticache.NewClient}),
 			managed.WithInitializers(managed.NewNameAsExternalName(mgr.GetClient()), &tagger{kube: mgr.GetClient()}),
+			managed.WithReferenceResolver(managed.NewAPISimpleReferenceResolver(mgr.GetClient())),
 			managed.WithLogger(l.WithValues("controller", name)),
 			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
 		))
@@ -245,6 +247,9 @@ func (t *tagger) Initialize(ctx context.Context, mg resource.Managed) error {
 		cr.Spec.ForProvider.Tags[i] = v1beta1.Tag{Key: k, Value: v}
 		i++
 	}
+	sort.Slice(cr.Spec.ForProvider.Tags, func(i, j int) bool {
+		return cr.Spec.ForProvider.Tags[i].Key < cr.Spec.ForProvider.Tags[j].Key
+	})
 	return errors.Wrap(t.kube.Update(ctx, cr), errUpdateReplicationGroupCR)
 }
 

@@ -18,6 +18,7 @@ package vpc
 
 import (
 	"context"
+	"sort"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsec2 "github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -60,6 +61,7 @@ func SetupVPC(mgr ctrl.Manager, l logging.Logger) error {
 		Complete(managed.NewReconciler(mgr,
 			resource.ManagedKind(v1alpha3.VPCGroupVersionKind),
 			managed.WithExternalConnecter(&connector{client: mgr.GetClient(), newClientFn: ec2.NewVPCClient, awsConfigFn: utils.RetrieveAwsConfigFromProvider}),
+			managed.WithReferenceResolver(managed.NewAPISimpleReferenceResolver(mgr.GetClient())),
 			managed.WithConnectionPublishers(),
 			managed.WithInitializers(&tagger{kube: mgr.GetClient()}),
 			managed.WithLogger(l.WithValues("controller", name)),
@@ -246,5 +248,8 @@ func (t *tagger) Initialize(ctx context.Context, mgd resource.Managed) error {
 		cr.Spec.Tags[i] = v1alpha3.Tag{Key: k, Value: v}
 		i++
 	}
+	sort.Slice(cr.Spec.Tags, func(i, j int) bool {
+		return cr.Spec.Tags[i].Key < cr.Spec.Tags[j].Key
+	})
 	return errors.Wrap(t.kube.Update(ctx, cr), errKubeUpdateFailed)
 }
