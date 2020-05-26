@@ -487,7 +487,7 @@ func TestUpdate(t *testing.T) {
 				acmpca: &fake.MockCertificateAuthorityClient{
 					MockDeletePermissionRequest: func(*awsacmpca.DeletePermissionInput) awsacmpca.DeletePermissionRequest {
 						return awsacmpca.DeletePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.DeletePermissionOutput{}},
+							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
 						}
 					},
 					MockDescribeCertificateAuthorityRequest: func(*awsacmpca.DescribeCertificateAuthorityInput) awsacmpca.DescribeCertificateAuthorityRequest {
@@ -497,15 +497,12 @@ func TestUpdate(t *testing.T) {
 					},
 					MockUpdateCertificateAuthorityRequest: func(*awsacmpca.UpdateCertificateAuthorityInput) awsacmpca.UpdateCertificateAuthorityRequest {
 						return awsacmpca.UpdateCertificateAuthorityRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.UpdateCertificateAuthorityOutput{}},
+							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
 						}
 					},
 					MockListTagsRequest: func(input *awsacmpca.ListTagsInput) awsacmpca.ListTagsRequest {
 						return awsacmpca.ListTagsRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.ListTagsOutput{
-								NextToken: aws.String(nextToken),
-								Tags:      []awsacmpca.Tag{{}},
-							}},
+							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
 						}
 					},
 					MockUntagCertificateAuthorityRequest: func(input *awsacmpca.UntagCertificateAuthorityInput) awsacmpca.UntagCertificateAuthorityRequest {

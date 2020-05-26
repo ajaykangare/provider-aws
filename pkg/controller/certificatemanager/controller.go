@@ -137,6 +137,8 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 
 	cr.SetConditions(runtimev1alpha1.Available())
 
+	cr.Status.AtProvider = acmpca.GenerateCertificateAuthorityObservation(certificateAuthority, cr.Spec.ForProvider.CertificateRenewalPermissionAllow)
+
 	tags, err := e.client.ListTagsRequest(&awsacmpca.ListTagsInput{
 		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
 	}).Send(ctx)
@@ -170,7 +172,6 @@ func (e *external) Create(ctx context.Context, mgd resource.Managed) (managed.Ex
 	if response != nil {
 
 		cr.Status.AtProvider.CertificateAuthorityArn = aws.StringValue(response.CreateCertificateAuthorityOutput.CertificateAuthorityArn)
-		cr.Status.AtProvider.RenewalPermission = cr.Spec.ForProvider.CertificateRenewalPermissionAllow
 
 		if cr.Spec.ForProvider.CertificateRenewalPermissionAllow {
 
@@ -195,13 +196,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		return managed.ExternalUpdate{}, errors.New(errUnexpectedObject)
 	}
 
-	response, err := e.client.DescribeCertificateAuthorityRequest(&awsacmpca.DescribeCertificateAuthorityInput{
-		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
-	}).Send(ctx)
-
-	if response != nil && response.CertificateAuthority.Status != awsacmpca.CertificateAuthorityStatusPendingCertificate {
-		_, err = e.client.UpdateCertificateAuthorityRequest(acmpca.GenerateUpdateCertificateAuthorityInput(cr)).Send(ctx)
-	}
+	_, err := e.client.UpdateCertificateAuthorityRequest(acmpca.GenerateUpdateCertificateAuthorityInput(cr)).Send(ctx)
 
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errCertificateAuthority)
@@ -283,7 +278,7 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 	}
 
 	if response != nil {
-		if response.CertificateAuthority.Status != awsacmpca.CertificateAuthorityStatusPendingCertificate {
+		if response.CertificateAuthority.Status == awsacmpca.CertificateAuthorityStatusActive {
 			_, err = e.client.UpdateCertificateAuthorityRequest(&awsacmpca.UpdateCertificateAuthorityInput{
 				CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
 				Status:                  awsacmpca.CertificateAuthorityStatusDisabled,
