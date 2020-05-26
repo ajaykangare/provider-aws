@@ -173,6 +173,10 @@ func LateInitializeCertificateAuthority(in *v1alpha1.CertificateAuthorityParamet
 		in.SerialNumber = certificateAuthority.Serial
 	}
 
+	if in.ExpirationInDays == nil && certificateAuthority.RevocationConfiguration.CrlConfiguration.ExpirationInDays != nil {
+		in.ExpirationInDays = certificateAuthority.RevocationConfiguration.CrlConfiguration.ExpirationInDays
+	}
+
 }
 
 // IsCertificateAuthorityUpToDate checks whether there is a change in any of the modifiable fields.
@@ -186,11 +190,11 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 		return false
 	}
 
-	if p.Spec.ForProvider.RevocationConfigurationEnabled != cd.RevocationConfiguration.CrlConfiguration.Enabled {
+	if aws.BoolValue(p.Spec.ForProvider.RevocationConfigurationEnabled) != aws.BoolValue(cd.RevocationConfiguration.CrlConfiguration.Enabled) {
 		return false
 	}
 
-	if p.Spec.ForProvider.ExpirationInDays != cd.RevocationConfiguration.CrlConfiguration.ExpirationInDays {
+	if aws.Int64Value(p.Spec.ForProvider.ExpirationInDays) != aws.Int64Value(cd.RevocationConfiguration.CrlConfiguration.ExpirationInDays) {
 		return false
 	}
 
@@ -210,14 +214,6 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 	}
 
 	return p.Spec.ForProvider.CertificateRenewalPermissionAllow == p.Status.AtProvider.RenewalPermission
-}
-
-// GenerateCertificateAuthorityObservation is used to produce CertificateAuthorityExternalStatus from acmpca.CertificateAuthority
-func GenerateCertificateAuthorityObservation(certificateAuthority acmpca.CertificateAuthority, renewalPermission bool) v1alpha1.CertificateAuthorityExternalStatus {
-	return v1alpha1.CertificateAuthorityExternalStatus{
-		CertificateAuthorityArn: aws.StringValue(certificateAuthority.Arn),
-		RenewalPermission:       renewalPermission,
-	}
 }
 
 // IsErrorNotFound returns true if the error code indicates that the item was not found

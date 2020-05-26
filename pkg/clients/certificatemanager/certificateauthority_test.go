@@ -326,12 +326,18 @@ func TestLateInitializeCertificateAuthority(t *testing.T) {
 					Type:   acmpca.CertificateAuthorityTypeRoot,
 					Status: acmpca.CertificateAuthorityStatusActive,
 					Serial: aws.String(serialNumber),
+					RevocationConfiguration: &acmpca.RevocationConfiguration{
+						CrlConfiguration: &acmpca.CrlConfiguration{
+							ExpirationInDays: nil,
+						},
+					},
 				},
 			},
 			want: &v1alpha1.CertificateAuthorityParameters{
-				Type:         certificateAuthorityType,
-				Status:       "ACTIVE",
-				SerialNumber: aws.String(serialNumber),
+				Type:             certificateAuthorityType,
+				Status:           "ACTIVE",
+				SerialNumber:     aws.String(serialNumber),
+				ExpirationInDays: nil,
 			},
 		},
 	}

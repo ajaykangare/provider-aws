@@ -65,21 +65,27 @@ type CertificateAuthorityParameters struct {
 	IdempotencyToken *string `json:"idempotencyToken,omitempty"`
 
 	// Organization legal name
+	// +immutable
 	Organization *string `json:"organization"`
 
 	// Organization's subdivision or unit
+	// +immutable
 	OrganizationalUnit *string `json:"organizationalUnit"`
 
 	// Two-digit code that specifies the country
+	// +immutable
 	Country *string `json:"country"`
 
 	// State in which the subject of the certificate is located
+	// +immutable
 	State *string `json:"state"`
 
 	// The locality such as a city or town
+	// +immutable
 	Locality *string `json:"locality"`
 
 	// FQDN associated with the certificate subject
+	// +immutable
 	CommonName *string `json:"commonName"`
 
 	// Type of the public key algorithm
@@ -110,34 +116,42 @@ type CertificateAuthorityParameters struct {
 
 	// Disambiguating information for the certificate subject.
 	// +optional
+	// +immutable
 	DistinguishedNameQualifier *string `json:"distinguishedNameQualifier,omitempty"`
 
 	// Typically a qualifier appended to the name of an individual
 	// +optional
+	// +immutable
 	GenerationQualifier *string `json:"generationQualifier,omitempty"`
 
 	// Concatenation of first letter of the GivenName, Middle name and SurName.
 	// +optional
+	// +immutable
 	Initials *string `json:"initials,omitempty"`
 
 	// First name
 	// +optional
+	// +immutable
 	GivenName *string `json:"givenName,omitempty"`
 
 	// Shortened version of a longer GivenName
 	// +optional
+	// +immutable
 	Pseudonym *string `json:"pseudonym,omitempty"`
 
 	// The certificate serial number.
 	// +optional
+	// +immutable
 	SerialNumber *string `json:"serialNumber,omitempty"`
 
 	// Surname
 	// +optional
+	// +immutable
 	Surname *string `json:"surname,omitempty"`
 
 	// Title
 	// +optional
+	// +immutable
 	Title *string `json:"title,omitempty"`
 
 	// One or more resource tags to associate with the certificateAuthority.
