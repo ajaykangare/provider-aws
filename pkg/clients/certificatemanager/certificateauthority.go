@@ -21,6 +21,10 @@ type Client interface {
 	ListTagsRequest(*acmpca.ListTagsInput) acmpca.ListTagsRequest
 	UntagCertificateAuthorityRequest(*acmpca.UntagCertificateAuthorityInput) acmpca.UntagCertificateAuthorityRequest
 	TagCertificateAuthorityRequest(*acmpca.TagCertificateAuthorityInput) acmpca.TagCertificateAuthorityRequest
+	// GetCertificateAuthorityCertificateRequest(*acmpca.GetCertificateAuthorityCertificateInput) acmpca.GetCertificateAuthorityCertificateRequest
+	// ImportCertificateAuthorityCertificateRequest(*acmpca.ImportCertificateAuthorityCertificateInput) acmpca.ImportCertificateAuthorityCertificateRequest
+	// GetCertificateAuthorityCsrRequest(*acmpca.GetCertificateAuthorityCsrInput) acmpca.GetCertificateAuthorityCsrRequest
+	// IssueCertificateRequest(*acmpca.IssueCertificateInput) acmpca.IssueCertificateRequest
 }
 
 // NewClient returns a new client using AWS credentials as JSON encoded data.
@@ -210,6 +214,14 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 	}
 
 	return p.Spec.ForProvider.CertificateRenewalPermissionAllow == p.Status.AtProvider.RenewalPermission
+}
+
+// GenerateCertificateAuthorityObservation is used to produce CertificateAuthorityExternalStatus from acmpca.CertificateAuthority
+func GenerateCertificateAuthorityObservation(certificateAuthority acmpca.CertificateAuthority, renewalPermission bool) v1alpha1.CertificateAuthorityExternalStatus {
+	return v1alpha1.CertificateAuthorityExternalStatus{
+		CertificateAuthorityArn: aws.StringValue(certificateAuthority.Arn),
+		RenewalPermission:       renewalPermission,
+	}
 }
 
 // IsErrorNotFound returns true if the error code indicates that the item was not found
