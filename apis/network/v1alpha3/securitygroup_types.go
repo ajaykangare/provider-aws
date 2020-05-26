@@ -20,34 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/pkg/errors"
-
-	aws "github.com/crossplane/provider-aws/pkg/clients"
 
 	runtimev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
 )
-
-// Error strings
-const (
-	errResourceIsNotSecurityGroup = "the managed resource is not a SecurityGroup"
-)
-
-// VPCIDReferencerForSecurityGroup is an attribute referencer that resolves VPCID from a referenced VPC
-type VPCIDReferencerForSecurityGroup struct {
-	VPCIDReferencer `json:",inline"`
-}
-
-// Assign assigns the retrieved value to the managed resource
-func (v *VPCIDReferencerForSecurityGroup) Assign(res resource.CanReference, value string) error {
-	sg, ok := res.(*SecurityGroup)
-	if !ok {
-		return errors.New(errResourceIsNotSecurityGroup)
-	}
-
-	sg.Spec.VPCID = aws.String(value)
-	return nil
-}
 
 // SecurityGroupParameters define the desired state of an AWS VPC Security
 // Group.
@@ -56,9 +31,13 @@ type SecurityGroupParameters struct {
 	// +optional
 	VPCID *string `json:"vpcId,omitempty"`
 
-	// VPCIDRef references to a VPC to and retrieves its vpcId
+	// VPCIDRef references a VPC to and retrieves its vpcId
 	// +optional
-	VPCIDRef *VPCIDReferencerForSecurityGroup `json:"vpcIdRef,omitempty"`
+	VPCIDRef *runtimev1alpha1.Reference `json:"vpcIdRef,omitempty"`
+
+	// VPCIDSelector selects a reference to a VPC to and retrieves its vpcId
+	// +optional
+	VPCIDSelector *runtimev1alpha1.Selector `json:"vpcIdSelector,omitempty"`
 
 	// A description of the security group.
 	Description string `json:"description"`
@@ -240,14 +219,14 @@ type SecurityGroupStatus struct {
 
 // A SecurityGroup is a managed resource that represents an AWS VPC Security
 // Group.
+// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
+// +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="GROUPNAME",type="string",JSONPath=".spec.groupName"
 // +kubebuilder:printcolumn:name="VPCID",type="string",JSONPath=".spec.vpcId"
 // +kubebuilder:printcolumn:name="DESCRIPTION",type="string",JSONPath=".spec.description"
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
-// +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,aws}
 type SecurityGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

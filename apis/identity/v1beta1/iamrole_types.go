@@ -110,13 +110,13 @@ type IAMRoleStatus struct {
 // +kubebuilder:object:root=true
 
 // An IAMRole is a managed resource that represents an AWS IAM Role.
-// +kubebuilder:printcolumn:name="ROLENAME",type="string",JSONPath=".spec.roleName"
-// +kubebuilder:printcolumn:name="DESCRIPTION",type="string",JSONPath=".spec.forProvider.description"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
+// +kubebuilder:printcolumn:name="ROLENAME",type="string",JSONPath=".spec.roleName"
+// +kubebuilder:printcolumn:name="DESCRIPTION",type="string",JSONPath=".spec.forProvider.description"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,aws}
 type IAMRole struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
