@@ -46,10 +46,7 @@ func init() {
 		awsv1alpha3.SchemeBuilder.AddToScheme,
 		storagev1alpha3.SchemeBuilder.AddToScheme,
 		certificatemanagerv1alpha1.SchemeBuilder.AddToScheme,
-<<<<<<< HEAD
-=======
 		databasev1alpha1.SchemeBuilder.AddToScheme,
->>>>>>> 302be45046b5ee995e37577c0bcd84b8dcbfc31c
 	)
 }
 
