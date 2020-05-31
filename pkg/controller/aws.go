@@ -23,7 +23,6 @@ import (
 
 	"github.com/crossplane/provider-aws/pkg/controller/cache"
 	"github.com/crossplane/provider-aws/pkg/controller/cache/cachesubnetgroup"
-	"github.com/crossplane/provider-aws/pkg/controller/certificatemanager"
 	"github.com/crossplane/provider-aws/pkg/controller/compute"
 	"github.com/crossplane/provider-aws/pkg/controller/database"
 	"github.com/crossplane/provider-aws/pkg/controller/database/dbsubnetgroup"
