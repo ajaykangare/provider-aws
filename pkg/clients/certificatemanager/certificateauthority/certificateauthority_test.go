@@ -1,4 +1,4 @@
-package certificatemanager
+package certificateauthority
 
 import (
 	"testing"

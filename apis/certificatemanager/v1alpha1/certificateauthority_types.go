@@ -161,6 +161,8 @@ type CertificateAuthorityParameters struct {
 // +kubebuilder:object:root=true
 
 // CertificateAuthority is a managed resource that represents an AWS CertificateAuthority Manager.
+// +kubebuilder:printcolumn:name="TYPE",type="string",JSONPath=".spec.forProvider.type"
+// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".spec.forProvider.status"
 // +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Ready')].status"
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"

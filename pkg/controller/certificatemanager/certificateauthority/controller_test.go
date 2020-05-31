@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package certificatemanager
+package certificateauthority
 
 import (
 	"context"
@@ -35,8 +35,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/test"
 
 	v1alpha1 "github.com/crossplane/provider-aws/apis/certificatemanager/v1alpha1"
-	acmpca "github.com/crossplane/provider-aws/pkg/clients/certificatemanager"
-	"github.com/crossplane/provider-aws/pkg/clients/certificatemanager/fake"
+	acmpca "github.com/crossplane/provider-aws/pkg/clients/certificatemanager/certificateauthority"
+	"github.com/crossplane/provider-aws/pkg/clients/certificatemanager/certificateauthority/fake"
 )
 
 const (

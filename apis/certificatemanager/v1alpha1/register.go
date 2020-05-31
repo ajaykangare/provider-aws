@@ -53,6 +53,15 @@ var (
 	CertificateAuthorityGroupVersionKind = SchemeGroupVersion.WithKind(CertificateAuthorityKind)
 )
 
+// Certificate type metadata.
+var (
+	CertificateKind             = reflect.TypeOf(Certificate{}).Name()
+	CertificateGroupKind        = schema.GroupKind{Group: Group, Kind: CertificateKind}.String()
+	CertificateKindAPIVersion   = CertificateKind + "." + SchemeGroupVersion.String()
+	CertificateGroupVersionKind = SchemeGroupVersion.WithKind(CertificateKind)
+)
+
 func init() {
+	SchemeBuilder.Register(&Certificate{}, &CertificateList{})
 	SchemeBuilder.Register(&CertificateAuthority{}, &CertificateAuthorityList{})
 }
