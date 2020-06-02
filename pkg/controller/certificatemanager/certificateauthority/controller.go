@@ -147,7 +147,7 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 	}).Send(ctx)
 
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errListTagsFailed)
+		return managed.ExternalObservation{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errListTagsFailed)
 	}
 
 	upToDate := acmpca.IsCertificateAuthorityUpToDate(cr, certificateAuthority, tags.Tags)
@@ -243,7 +243,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		}).Send(ctx)
 
 		if err != nil {
-			return managed.ExternalUpdate{}, errors.Wrap(err, errListTagsFailed)
+			return managed.ExternalUpdate{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errListTagsFailed)
 		}
 
 		if len(tags) < len(currentTags.Tags) {
