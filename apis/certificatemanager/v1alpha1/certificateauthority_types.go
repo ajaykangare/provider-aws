@@ -41,7 +41,7 @@ type CertificateAuthoritySpec struct {
 // CertificateAuthorityExternalStatus keeps the state of external resource
 type CertificateAuthorityExternalStatus struct {
 	// String that contains the ARN of the issued certificate Authority
-	CertificateAuthorityArn string `json:"certificateArn"`
+	CertificateAuthorityArn string `json:"certificateAuthorityArn"`
 	RenewalPermission       bool   `json:"renewalPermission"`
 }
 

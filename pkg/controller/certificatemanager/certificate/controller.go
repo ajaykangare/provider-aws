@@ -49,8 +49,9 @@ const (
 	errUpdate           = "failed to update the Certificate resource"
 	errSDK              = "empty Certificate received from ACM API"
 
-	errKubeUpdateFailed = "cannot late initialize Certificate"
-	errUpToDateFailed   = "cannot check whether object is up-to-date"
+	errKubeUpdateFailed    = "cannot late initialize Certificate"
+	errUpToDateFailed      = "cannot check whether object is up-to-date"
+	errPersistExternalName = "failed to persist Certificate ARN"
 
 	errAddTagsFailed        = "cannot add tags to Certificate"
 	errListTagsFailed       = "failed to list tags for Certificate"
@@ -70,6 +71,7 @@ func SetupCertificate(mgr ctrl.Manager, l logging.Logger) error {
 			resource.ManagedKind(v1alpha1.CertificateGroupVersionKind),
 			managed.WithExternalConnecter(&connector{client: mgr.GetClient(), newClientFn: acm.NewClient, awsConfigFn: utils.RetrieveAwsConfigFromProvider}),
 			managed.WithConnectionPublishers(),
+			managed.WithInitializers(),
 			managed.WithLogger(l.WithValues("controller", name)),
 			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name)))))
 }
@@ -110,14 +112,14 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 		return managed.ExternalObservation{}, errors.New(errUnexpectedObject)
 	}
 
-	if cr.Status.AtProvider.CertificateArn == "" {
+	if meta.GetExternalName(cr) == "" {
 		return managed.ExternalObservation{
 			ResourceExists: false,
 		}, nil
 	}
 
 	response, err := e.client.DescribeCertificateRequest(&awsacm.DescribeCertificateInput{
-		CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+		CertificateArn: aws.String(meta.GetExternalName(cr)),
 	}).Send(ctx)
 
 	if err != nil {
@@ -142,10 +144,10 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 	cr.Status.AtProvider = acm.GenerateCertificateStatus(certificate)
 
 	tags, err := e.client.ListTagsForCertificateRequest(&awsacm.ListTagsForCertificateInput{
-		CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+		CertificateArn: aws.String(meta.GetExternalName(cr)),
 	}).Send(ctx)
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errListTagsFailed)
+		return managed.ExternalObservation{}, errors.Wrap(resource.Ignore(acm.IsErrorNotFound, err), errListTagsFailed)
 	}
 
 	upToDate := acm.IsCertificateUpToDate(cr.Spec.ForProvider, certificate, tags.Tags)
@@ -170,10 +172,14 @@ func (e *external) Create(ctx context.Context, mgd resource.Managed) (managed.Ex
 
 	response, err := e.client.RequestCertificateRequest(acm.GenerateCreateCertificateInput(meta.GetExternalName(cr), &cr.Spec.ForProvider)).Send(ctx)
 
-	if response != nil {
-		cr.Status.AtProvider.CertificateArn = aws.StringValue(response.RequestCertificateOutput.CertificateArn)
+	if err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, errCreate)
 	}
 
+	meta.SetExternalName(cr, aws.StringValue(response.RequestCertificateOutput.CertificateArn))
+	if err = e.kube.Update(ctx, cr); err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, errPersistExternalName)
+	}
 	return managed.ExternalCreation{}, errors.Wrap(err, errCreate)
 
 }
@@ -185,17 +191,6 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		return managed.ExternalUpdate{}, errors.New(errUnexpectedObject)
 	}
 
-	if aws.StringValue(cr.Spec.ForProvider.CertificateAuthorityArn) == "" {
-		_, err := e.client.UpdateCertificateOptionsRequest(&awsacm.UpdateCertificateOptionsInput{
-			CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
-			Options:        acm.GenerateCertificateOptionRequest(&cr.Spec.ForProvider),
-		}).Send(ctx)
-
-		if err != nil {
-			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdate)
-		}
-	}
-
 	if len(cr.Spec.ForProvider.Tags) > 0 {
 
 		tags := make([]awsacm.Tag, len(cr.Spec.ForProvider.Tags))
@@ -204,16 +199,16 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		}
 
 		currentTags, err := e.client.ListTagsForCertificateRequest(&awsacm.ListTagsForCertificateInput{
-			CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+			CertificateArn: aws.String(meta.GetExternalName(cr)),
 		}).Send(ctx)
 
 		if err != nil {
-			return managed.ExternalUpdate{}, errors.Wrap(err, errListTagsFailed)
+			return managed.ExternalUpdate{}, errors.Wrap(resource.Ignore(acm.IsErrorNotFound, err), errListTagsFailed)
 		}
 
 		if len(tags) < len(currentTags.Tags) {
 			_, err := e.client.RemoveTagsFromCertificateRequest(&awsacm.RemoveTagsFromCertificateInput{
-				CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+				CertificateArn: aws.String(meta.GetExternalName(cr)),
 				Tags:           currentTags.Tags,
 			}).Send(ctx)
 			if err != nil {
@@ -221,7 +216,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 			}
 		}
 		_, err = e.client.AddTagsToCertificateRequest(&awsacm.AddTagsToCertificateInput{
-			CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+			CertificateArn: aws.String(meta.GetExternalName(cr)),
 			Tags:           tags,
 		}).Send(ctx)
 		if err != nil {
@@ -229,11 +224,22 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		}
 	}
 
+	if aws.StringValue(cr.Spec.ForProvider.CertificateAuthorityArn) == "" {
+		_, err := e.client.UpdateCertificateOptionsRequest(&awsacm.UpdateCertificateOptionsInput{
+			CertificateArn: aws.String(meta.GetExternalName(cr)),
+			Options:        acm.GenerateCertificateOptionRequest(&cr.Spec.ForProvider),
+		}).Send(ctx)
+
+		if err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdate)
+		}
+	}
+
 	if cr.Spec.ForProvider.RenewCertificate {
 
 		if strings.EqualFold(cr.Status.AtProvider.RenewalEligibility, "ELIGIBLE") {
 			_, err := e.client.RenewCertificateRequest(&awsacm.RenewCertificateInput{
-				CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+				CertificateArn: aws.String(meta.GetExternalName(cr)),
 			}).Send(ctx)
 
 			if err != nil {
@@ -256,12 +262,8 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 	cr.Status.SetConditions(runtimev1alpha1.Deleting())
 
 	_, err := e.client.DeleteCertificateRequest(&awsacm.DeleteCertificateInput{
-		CertificateArn: aws.String(cr.Status.AtProvider.CertificateArn),
+		CertificateArn: aws.String(meta.GetExternalName(cr)),
 	}).Send(ctx)
-
-	if err == nil {
-		cr.Status.AtProvider.CertificateArn = ""
-	}
 
 	return errors.Wrap(resource.Ignore(acm.IsErrorNotFound, err), errDelete)
 }

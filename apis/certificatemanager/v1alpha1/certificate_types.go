@@ -70,6 +70,14 @@ type CertificateParameters struct {
 	// +optional
 	CertificateAuthorityArn *string `json:"certificateAuthorityArn,omitempty"`
 
+	// CertificateAuthorityArnRef references an CertificateAuthority to retrieve its Arn
+	// +optional
+	CertificateAuthorityArnRef *runtimev1alpha1.Reference `json:"certificateAuthorityArnRef,omitempty"`
+
+	// CertificateAuthorityArnSelector selects a reference to an CertificateAuthority to retrieve its Arn
+	// +optional
+	CertificateAuthorityArnSelector *runtimev1alpha1.Selector `json:"certificateAuthorityArnSelector,omitempty"`
+
 	// Fully qualified domain name (FQDN),that to secure with an ACM certificate.
 	// +immutable
 	DomainName string `json:"domainName"`

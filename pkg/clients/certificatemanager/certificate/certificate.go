@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/awserr"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
-	"github.com/aws/aws-sdk-go-v2/service/iam"
 
 	"github.com/crossplane/provider-aws/apis/certificatemanager/v1alpha1"
 	awsclients "github.com/crossplane/provider-aws/pkg/clients"
@@ -83,7 +82,6 @@ func GenerateCertificateStatus(certificate acm.CertificateDetail) v1alpha1.Certi
 		CertificateArn:     aws.StringValue(certificate.CertificateArn),
 		RenewalEligibility: string(certificate.RenewalEligibility),
 	}
-
 }
 
 // GenerateCertificateOptionRequest return CertificateOptions from CertificateSpec
@@ -166,7 +164,7 @@ func IsCertificateUpToDate(p v1alpha1.CertificateParameters, cd acm.CertificateD
 
 // IsErrorNotFound returns true if the error code indicates that the item was not found
 func IsErrorNotFound(err error) bool {
-	if iamErr, ok := err.(awserr.Error); ok && iamErr.Code() == iam.ErrCodeNoSuchEntityException {
+	if acmErr, ok := err.(awserr.Error); ok && acmErr.Code() == acm.ErrCodeResourceNotFoundException {
 		return true
 	}
 	return false
