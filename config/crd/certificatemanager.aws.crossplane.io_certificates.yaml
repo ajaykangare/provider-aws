@@ -135,6 +135,31 @@ spec:
                   description: The Amazon Resource Name (ARN) of the private certificate
                     authority (CA)that will be used to issue the certificate.
                   type: string
+                certificateAuthorityArnRef:
+                  description: CertificateAuthorityArnRef references an CertificateAuthority
+                    to retrieve its Arn
+                  properties:
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                certificateAuthorityArnSelector:
+                  description: CertificateAuthorityArnSelector selects a reference
+                    to an CertificateAuthority to retrieve its Arn
+                  properties:
+                    matchControllerRef:
+                      description: MatchControllerRef ensures an object with the same
+                        controller reference as the selecting object is selected.
+                      type: boolean
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      description: MatchLabels ensures an object with matching labels
+                        is selected.
+                      type: object
+                  type: object
                 certificateTransparencyLoggingPreference:
                   description: Parameter add the certificate to a certificate transparency
                     log.

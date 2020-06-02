@@ -216,6 +216,14 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 	return p.Spec.ForProvider.CertificateRenewalPermissionAllow == p.Status.AtProvider.RenewalPermission
 }
 
+// GenerateCertificateAuthorityExternalStatus is used to produce CertificateAuthorityExternalStatus from acmpca.certificateAuthorityStatus and v1alpha1.CertificateAuthority
+func GenerateCertificateAuthorityExternalStatus(certificateAuthority acmpca.CertificateAuthority, p *v1alpha1.CertificateAuthority) v1alpha1.CertificateAuthorityExternalStatus {
+	return v1alpha1.CertificateAuthorityExternalStatus{
+		CertificateAuthorityArn: aws.StringValue(certificateAuthority.Arn),
+		RenewalPermission:       p.Spec.ForProvider.CertificateRenewalPermissionAllow,
+	}
+}
+
 // IsErrorNotFound returns true if the error code indicates that the item was not found
 func IsErrorNotFound(err error) bool {
 	if awsErr, ok := err.(awserr.Error); ok {

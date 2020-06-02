@@ -21,6 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -333,6 +334,16 @@ func (in *CertificateParameters) DeepCopyInto(out *CertificateParameters) {
 		in, out := &in.CertificateAuthorityArn, &out.CertificateAuthorityArn
 		*out = new(string)
 		**out = **in
+	}
+	if in.CertificateAuthorityArnRef != nil {
+		in, out := &in.CertificateAuthorityArnRef, &out.CertificateAuthorityArnRef
+		*out = new(corev1alpha1.Reference)
+		**out = **in
+	}
+	if in.CertificateAuthorityArnSelector != nil {
+		in, out := &in.CertificateAuthorityArnSelector, &out.CertificateAuthorityArnSelector
+		*out = new(corev1alpha1.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.DomainValidationOptions != nil {
 		in, out := &in.DomainValidationOptions, &out.DomainValidationOptions

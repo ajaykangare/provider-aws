@@ -327,14 +327,14 @@ spec:
               description: CertificateAuthorityExternalStatus keeps the state of external
                 resource
               properties:
-                certificateArn:
+                certificateAuthorityArn:
                   description: String that contains the ARN of the issued certificate
                     Authority
                   type: string
                 renewalPermission:
                   type: boolean
               required:
-              - certificateArn
+              - certificateAuthorityArn
               - renewalPermission
               type: object
             bindingPhase:
