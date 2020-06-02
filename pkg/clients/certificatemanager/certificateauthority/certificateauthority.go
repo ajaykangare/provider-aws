@@ -227,7 +227,7 @@ func GenerateCertificateAuthorityExternalStatus(certificateAuthority acmpca.Cert
 // IsErrorNotFound returns true if the error code indicates that the item was not found
 func IsErrorNotFound(err error) bool {
 	if awsErr, ok := err.(awserr.Error); ok {
-		if awsErr.Code() == acmpca.ErrCodeResourceNotFoundException {
+		if awsErr.Code() == acmpca.ErrCodeInvalidStateException {
 			return true
 		}
 	}
