@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/aws/aws-sdk-go-v2/service/acmpca"
 	runtimev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -54,11 +55,13 @@ type CertificateAuthorityStatus struct {
 // CertificateAuthorityParameters defines the desired state of an AWS CertificateAuthority.
 type CertificateAuthorityParameters struct {
 	// Type of the certificate authority
-	Type string `json:"type"`
+	// +kubebuilder:validation:Enum=root;subordinate
+	Type acmpca.CertificateAuthorityType `json:"type"`
 
 	// Status of the certificate authority
 	// +optional
-	Status string `json:"status"`
+	// +kubebuilder:validation:Enum=creating;pending_certificate;active;deleted;disabled;expired;failed
+	Status acmpca.CertificateAuthorityStatus `json:"status"`
 
 	// Token to distinguish between calls to RequestCertificate.
 	// +optional
@@ -89,10 +92,12 @@ type CertificateAuthorityParameters struct {
 	CommonName *string `json:"commonName"`
 
 	// Type of the public key algorithm
-	KeyAlgorithm string `json:"keyAlgorithm"`
+	// +kubebuilder:validation:Enum=rsa2048;rsa4096;ecprime256v1;ecsecp384r1
+	KeyAlgorithm acmpca.KeyAlgorithm `json:"keyAlgorithm"`
 
 	// Algorithm that private CA uses to sign certificate requests
-	SigningAlgorithm string `json:"signingAlgorithm"`
+	// +kubebuilder:validation:Enum=sha256withecdsa;sha384withecdsa;sha512withecdsa;sha256withrsa;sha384withrsa;sha512withrsa
+	SigningAlgorithm acmpca.SigningAlgorithm `json:"signingAlgorithm"`
 
 	// Boolean value that specifies certificate revocation
 	RevocationConfigurationEnabled *bool `json:"revocationConfigurationEnabled"`

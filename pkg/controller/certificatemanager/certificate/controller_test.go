@@ -31,6 +31,7 @@ import (
 
 	corev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
 	runtimev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
@@ -48,8 +49,8 @@ const (
 var (
 	// an arbitrary managed resource
 	unexpecedItem                                  resource.Managed
-	domainName                                     = "infracloud.site"
-	certificateTransparencyLoggingPreferenceEnbled = "enabled"
+	domainName                                     = "some.site"
+	certificateTransparencyLoggingPreferenceEnbled = "ENABLED"
 	certificateArn                                 = "somearn"
 
 	errBoom = errors.New("boom")
@@ -69,18 +70,14 @@ func withConditions(c ...corev1alpha1.Condition) certificateModifier {
 func withDomainName() certificateModifier {
 	return func(r *v1alpha1.Certificate) {
 		r.Spec.ForProvider.DomainName = domainName
+		meta.SetExternalName(r, certificateArn)
 	}
 }
-
-// func withValidationMethod() certificateModifier {
-// 	return func(r *v1alpha1.Certificate) {
-// 		r.Spec.ForProvider.ValidationMethod = validationMethod
-// 	}
-// }
 
 func withCertificateTransparencyLoggingPreference() certificateModifier {
 	return func(r *v1alpha1.Certificate) {
 		r.Spec.ForProvider.CertificateTransparencyLoggingPreference = certificateTransparencyLoggingPreferenceEnbled
+		meta.SetExternalName(r, certificateArn)
 	}
 }
 
@@ -90,6 +87,7 @@ func withTags() certificateModifier {
 			Key:   "Name",
 			Value: "somename",
 		})
+		meta.SetExternalName(r, certificateArn)
 	}
 }
 
@@ -97,6 +95,7 @@ func withCertificateArn() certificateModifier {
 	return func(r *v1alpha1.Certificate) {
 		r.Status.AtProvider.CertificateArn = certificateArn
 		r.Spec.ForProvider.CertificateTransparencyLoggingPreference = certificateTransparencyLoggingPreferenceEnbled
+		meta.SetExternalName(r, certificateArn)
 	}
 }
 
@@ -108,6 +107,7 @@ func certificate(m ...certificateModifier) *v1alpha1.Certificate {
 			},
 		},
 	}
+	meta.SetExternalName(cr, certificateArn)
 	for _, f := range m {
 		f(cr)
 	}
@@ -206,7 +206,8 @@ func TestObserve(t *testing.T) {
 						return awsacm.DescribeCertificateRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacm.DescribeCertificateOutput{
 								Certificate: &awsacm.CertificateDetail{
-									Options: &awsacm.CertificateOptions{CertificateTransparencyLoggingPreference: awsacm.CertificateTransparencyLoggingPreferenceEnabled},
+									CertificateArn: aws.String(certificateArn),
+									Options:        &awsacm.CertificateOptions{CertificateTransparencyLoggingPreference: awsacm.CertificateTransparencyLoggingPreferenceEnabled},
 								},
 							}},
 						}
@@ -219,10 +220,10 @@ func TestObserve(t *testing.T) {
 						}
 					},
 				},
-				cr: certificate(withCertificateArn()),
+				cr: certificate(),
 			},
 			want: want{
-				cr: certificate(withCertificateTransparencyLoggingPreference(), withConditions(runtimev1alpha1.Available())),
+				cr: certificate(withCertificateArn(), withConditions(runtimev1alpha1.Available())),
 				result: managed.ExternalObservation{
 					ResourceExists:   true,
 					ResourceUpToDate: false,
@@ -273,7 +274,12 @@ func TestObserve(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := &external{client: tc.acm}
+			e := &external{
+				client: tc.acm,
+				kube: &test.MockClient{
+					MockUpdate: test.NewMockUpdateFn(nil),
+				},
+			}
 			o, err := e.Observe(context.Background(), tc.args.cr)
 
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -307,7 +313,9 @@ func TestCreate(t *testing.T) {
 				acm: &fake.MockCertificateClient{
 					MockRequestCertificateRequest: func(input *awsacm.RequestCertificateInput) awsacm.RequestCertificateRequest {
 						return awsacm.RequestCertificateRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacm.RequestCertificateOutput{}},
+							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacm.RequestCertificateOutput{
+								CertificateArn: aws.String(certificateArn),
+							}},
 						}
 					},
 				},
@@ -348,7 +356,12 @@ func TestCreate(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := &external{client: tc.acm}
+			e := &external{
+				client: tc.acm,
+				kube: &test.MockClient{
+					MockUpdate: test.NewMockUpdateFn(nil),
+				},
+			}
 			o, err := e.Create(context.Background(), tc.args.cr)
 
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -529,7 +542,7 @@ func TestDelete(t *testing.T) {
 						}
 					},
 				},
-				cr: certificate(withCertificateArn()),
+				cr: certificate(withCertificateTransparencyLoggingPreference()),
 			},
 			want: want{
 				cr: certificate(withCertificateTransparencyLoggingPreference(),
@@ -573,8 +586,7 @@ func TestDelete(t *testing.T) {
 				cr: certificate(),
 			},
 			want: want{
-				cr:  certificate(withConditions(corev1alpha1.Deleting())),
-				err: errors.Wrap(awserr.New(awsacm.ErrCodeResourceNotFoundException, "", nil), errDelete),
+				cr: certificate(withConditions(corev1alpha1.Deleting())),
 			},
 		},
 	}
