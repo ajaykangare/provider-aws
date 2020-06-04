@@ -40,13 +40,13 @@ import (
 )
 
 const (
+	errPendingStatus    = "The managed resource in pending status, please open the ACM Private CA console https://console.aws.amazon.com/acm-pca/home install CA certificate "
 	errUnexpectedObject = "The managed resource is not an ACMPCA resource"
 	errClient           = "cannot create a new ACMPCA client"
 	errGet              = "failed to get ACMPCA with name"
 	errCreate           = "failed to create the ACMPCA resource"
 	errDelete           = "failed to delete the ACMPCA resource"
-	// errUpdate           = "failed to update the ACMPCA resource"
-	errSDK = "empty ACMPCA received from ACMPCA API"
+	errSDK              = "empty ACMPCA received from ACMPCA API"
 
 	errKubeUpdateFailed    = "cannot late initialize ACMPCA"
 	errUpToDateFailed      = "cannot check whether object is up-to-date"
@@ -126,6 +126,12 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 
 	if response.CertificateAuthority == nil {
 		return managed.ExternalObservation{}, errors.New(errSDK)
+	}
+
+	if response.CertificateAuthority.Status == awsacmpca.CertificateAuthorityStatusPendingCertificate {
+		return managed.ExternalObservation{
+			ResourceExists: true,
+		}, errors.New(errPendingStatus)
 	}
 
 	certificateAuthority := *response.CertificateAuthority

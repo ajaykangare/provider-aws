@@ -169,6 +169,11 @@ spec:
                   type: string
                 keyAlgorithm:
                   description: Type of the public key algorithm
+                  enum:
+                  - rsa2048
+                  - rsa4096
+                  - ecprime256v1
+                  - ecsecp384r1
                   type: string
                 locality:
                   description: The locality such as a city or town
@@ -199,12 +204,27 @@ spec:
                 signingAlgorithm:
                   description: Algorithm that private CA uses to sign certificate
                     requests
+                  enum:
+                  - sha256withecdsa
+                  - sha384withecdsa
+                  - sha512withecdsa
+                  - sha256withrsa
+                  - sha384withrsa
+                  - sha512withrsa
                   type: string
                 state:
                   description: State in which the subject of the certificate is located
                   type: string
                 status:
                   description: Status of the certificate authority
+                  enum:
+                  - creating
+                  - pending_certificate
+                  - active
+                  - deleted
+                  - disabled
+                  - expired
+                  - failed
                   type: string
                 surname:
                   description: Surname
@@ -231,6 +251,9 @@ spec:
                   type: string
                 type:
                   description: Type of the certificate authority
+                  enum:
+                  - root
+                  - subordinate
                   type: string
               required:
               - certificateRenewalPermissionAllow

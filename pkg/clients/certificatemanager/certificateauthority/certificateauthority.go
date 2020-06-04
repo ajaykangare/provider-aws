@@ -32,15 +32,10 @@ func NewClient(conf *aws.Config) (Client, error) {
 func GenerateCreateCertificateAuthorityInput(p *v1alpha1.CertificateAuthorityParameters) *acmpca.CreateCertificateAuthorityInput {
 	m := &acmpca.CreateCertificateAuthorityInput{
 
+		CertificateAuthorityType:          p.Type,
 		IdempotencyToken:                  p.IdempotencyToken,
 		CertificateAuthorityConfiguration: GenerateCertificateAuthorityConfiguration(p),
 		RevocationConfiguration:           GenerateRevocationConfiguration(p),
-	}
-
-	if strings.EqualFold(p.Type, "ROOT") {
-		m.CertificateAuthorityType = acmpca.CertificateAuthorityTypeRoot
-	} else if strings.EqualFold(p.Type, "SUBORDINATE") {
-		m.CertificateAuthorityType = acmpca.CertificateAuthorityTypeSubordinate
 	}
 
 	m.Tags = make([]acmpca.Tag, len(p.Tags))
@@ -74,32 +69,8 @@ func GenerateCertificateAuthorityConfiguration(p *v1alpha1.CertificateAuthorityP
 			Surname:                    p.Surname,
 			Title:                      p.Title,
 		},
-	}
-
-	switch p.SigningAlgorithm {
-	case "SHA256WITHECDSA":
-		m.SigningAlgorithm = acmpca.SigningAlgorithmSha256withecdsa
-	case "SHA384WITHECDSA":
-		m.SigningAlgorithm = acmpca.SigningAlgorithmSha384withecdsa
-	case "SHA512WITHECDSA":
-		m.SigningAlgorithm = acmpca.SigningAlgorithmSha512withecdsa
-	case "SHA256WITHRSA":
-		m.SigningAlgorithm = acmpca.SigningAlgorithmSha256withrsa
-	case "SHA384WITHRSA":
-		m.SigningAlgorithm = acmpca.SigningAlgorithmSha384withrsa
-	case "SHA512WITHRSA":
-		m.SigningAlgorithm = acmpca.SigningAlgorithmSha512withrsa
-	}
-
-	switch p.KeyAlgorithm {
-	case "RSA_2048":
-		m.KeyAlgorithm = acmpca.KeyAlgorithmRsa2048
-	case "RSA_4096":
-		m.KeyAlgorithm = acmpca.KeyAlgorithmRsa4096
-	case "EC_prime256v1":
-		m.KeyAlgorithm = acmpca.KeyAlgorithmEcPrime256v1
-	case "EC_secp384r1":
-		m.KeyAlgorithm = acmpca.KeyAlgorithmEcSecp384r1
+		SigningAlgorithm: p.SigningAlgorithm,
+		KeyAlgorithm:     p.KeyAlgorithm,
 	}
 
 	return m
@@ -121,36 +92,13 @@ func GenerateRevocationConfiguration(p *v1alpha1.CertificateAuthorityParameters)
 	return m
 }
 
-// GenerateCertificateAuthorityStatus from status
-func GenerateCertificateAuthorityStatus(status string) acmpca.CertificateAuthorityStatus {
-
-	var m acmpca.CertificateAuthorityStatus
-	switch strings.ToUpper(status) {
-	case "CREATING":
-		m = acmpca.CertificateAuthorityStatusCreating
-	case "PENDING_CERTIFICATE":
-		m = acmpca.CertificateAuthorityStatusPendingCertificate
-	case "ACTIVE":
-		m = acmpca.CertificateAuthorityStatusActive
-	case "DELETED":
-		m = acmpca.CertificateAuthorityStatusDeleted
-	case "DISABLED":
-		m = acmpca.CertificateAuthorityStatusDisabled
-	case "EXPIRED":
-		m = acmpca.CertificateAuthorityStatusExpired
-	case "FAILED":
-		m = acmpca.CertificateAuthorityStatusFailed
-	}
-	return m
-}
-
 // GenerateUpdateCertificateAuthorityInput from CertificateAuthority
 func GenerateUpdateCertificateAuthorityInput(cr *v1alpha1.CertificateAuthority) *acmpca.UpdateCertificateAuthorityInput {
 
 	return &acmpca.UpdateCertificateAuthorityInput{
 		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
 		RevocationConfiguration: GenerateRevocationConfiguration(&cr.Spec.ForProvider),
-		Status:                  GenerateCertificateAuthorityStatus(cr.Spec.ForProvider.Status),
+		Status:                  cr.Spec.ForProvider.Status,
 	}
 }
 
@@ -161,12 +109,12 @@ func LateInitializeCertificateAuthority(in *v1alpha1.CertificateAuthorityParamet
 		return
 	}
 
-	if in.Type == "" && string(certificateAuthority.Type) != "" {
-		in.Type = string(certificateAuthority.Type)
+	if string(in.Type) == "" && string(certificateAuthority.Type) != "" {
+		in.Type = certificateAuthority.Type
 	}
 
-	if in.Status == "" && string(certificateAuthority.Status) != "" {
-		in.Status = string(certificateAuthority.Status)
+	if (string(in.Status) == "" || in.Status == acmpca.CertificateAuthorityStatusPendingCertificate) && string(certificateAuthority.Status) != "" {
+		in.Status = certificateAuthority.Status
 	}
 
 	if aws.StringValue(in.SerialNumber) == "" && aws.StringValue(certificateAuthority.Serial) != "" {
@@ -199,6 +147,10 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 	}
 
 	if len(p.Spec.ForProvider.Tags) != len(tags) {
+		return false
+	}
+
+	if p.Spec.ForProvider.Status != cd.Status {
 		return false
 	}
 
