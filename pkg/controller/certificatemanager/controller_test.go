@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/pkg/test"
@@ -46,19 +47,12 @@ const (
 
 var (
 	// an arbitrary managed resource
-	unexpecedItem resource.Managed
-	// domainName                                     = "infracloud.site"
-	// certificateTransparencyLoggingPreferenceEnbled = "enabled"
-	certificateAuthorityArn = "someauthorityarn"
-	nextToken               = "someNextToken"
-	serialNumber            = "someserialNumber"
-	customCname             = "soemcustomname"
-	s3BucketName            = "somes3bucketname"
-	// revocationConfigurationEnabled      = true
-	// revocationConfigurationEnabledfalse = false
-	// renewalPermission                   = true
-	// someSigningAlgorithm       = "SHA256WITHECDSA"
-	// someKeyAlgorithm           = "RSA_2048"
+	unexpecedItem              resource.Managed
+	certificateAuthorityArn    = "someauthorityarn"
+	nextToken                  = "someNextToken"
+	serialNumber               = "someserialNumber"
+	customCname                = "soemcustomname"
+	s3BucketName               = "somes3bucketname"
 	commonName                 = "someCommonName"
 	country                    = "someCountry"
 	distinguishedNameQualifier = "someDistinguishedNameQualifier"
@@ -72,9 +66,6 @@ var (
 	state                      = "someState"
 	surname                    = "someSurname"
 	title                      = "someTitle"
-	// idempotencyToken           = "someidempotencyToken"
-	// certificateAuthorityType   = "ROOT"
-	arn = "somearn"
 
 	errBoom = errors.New("boom")
 )
@@ -90,18 +81,18 @@ func withConditions(c ...corev1alpha1.Condition) certificateAuthorityModifier {
 	return func(r *v1alpha1.CertificateAuthority) { r.Status.ConditionedStatus.Conditions = c }
 }
 
-// func withTags() certificateAuthorityModifier {
-// 	return func(r *v1alpha1.CertificateAuthority) {
-// 		r.Spec.ForProvider.Tags = append(r.Spec.ForProvider.Tags, v1alpha1.Tag{
-// 			Key:   "Name",
-// 			Value: "somename",
-// 		})
-// 	}
-// }
-
 func withCertificateAuthorityArn() certificateAuthorityModifier {
 	return func(r *v1alpha1.CertificateAuthority) {
 		r.Status.AtProvider.CertificateAuthorityArn = certificateAuthorityArn
+		meta.SetExternalName(r, certificateAuthorityArn)
+	}
+}
+
+func withCertificateAuthorityType() certificateAuthorityModifier {
+	return func(r *v1alpha1.CertificateAuthority) {
+		r.Spec.ForProvider.Type = awsacmpca.CertificateAuthorityTypeRoot
+		r.Status.AtProvider.CertificateAuthorityArn = certificateAuthorityArn
+		meta.SetExternalName(r, certificateAuthorityArn)
 	}
 }
 
@@ -113,6 +104,7 @@ func certificateAuthority(m ...certificateAuthorityModifier) *v1alpha1.Certifica
 			},
 		},
 	}
+	meta.SetExternalName(cr, certificateAuthorityArn)
 	for _, f := range m {
 		f(cr)
 	}
@@ -211,10 +203,8 @@ func TestObserve(t *testing.T) {
 						return awsacmpca.DescribeCertificateAuthorityRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.DescribeCertificateAuthorityOutput{
 								CertificateAuthority: &awsacmpca.CertificateAuthority{
-									Arn:    aws.String(arn),
-									Type:   awsacmpca.CertificateAuthorityTypeRoot,
-									Status: awsacmpca.CertificateAuthorityStatusActive,
-									Serial: aws.String(serialNumber),
+									Arn:  aws.String(certificateAuthorityArn),
+									Type: awsacmpca.CertificateAuthorityTypeRoot,
 									RevocationConfiguration: &awsacmpca.RevocationConfiguration{
 										CrlConfiguration: &awsacmpca.CrlConfiguration{
 											CustomCname:  aws.String(customCname),
@@ -257,9 +247,9 @@ func TestObserve(t *testing.T) {
 				cr: certificateAuthority(),
 			},
 			want: want{
-				cr: certificateAuthority(),
+				cr: certificateAuthority(withCertificateAuthorityType(), withConditions(corev1alpha1.Available())),
 				result: managed.ExternalObservation{
-					ResourceExists: false,
+					ResourceExists: true,
 				},
 			},
 		},
@@ -288,26 +278,16 @@ func TestObserve(t *testing.T) {
 				err: errors.Wrap(errBoom, errGet),
 			},
 		},
-		"ResourceDoesNotExist": {
-			args: args{
-				acmpca: &fake.MockCertificateAuthorityClient{
-					MockDescribeCertificateAuthorityRequest: func(*awsacmpca.DescribeCertificateAuthorityInput) awsacmpca.DescribeCertificateAuthorityRequest {
-						return awsacmpca.DescribeCertificateAuthorityRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: awserr.New(awsacmpca.ErrCodeResourceNotFoundException, "", nil)},
-						}
-					},
-				},
-				cr: certificateAuthority(),
-			},
-			want: want{
-				cr: certificateAuthority(),
-			},
-		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := &external{client: tc.acmpca}
+			e := &external{
+				client: tc.acmpca,
+				kube: &test.MockClient{
+					MockUpdate: test.NewMockUpdateFn(nil),
+				},
+			}
 			o, err := e.Observe(context.Background(), tc.args.cr)
 
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -392,7 +372,12 @@ func TestCreate(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			e := &external{client: tc.acmpca}
+			e := &external{
+				client: tc.acmpca,
+				kube: &test.MockClient{
+					MockUpdate: test.NewMockUpdateFn(nil),
+				},
+			}
 			o, err := e.Create(context.Background(), tc.args.cr)
 
 			if diff := cmp.Diff(tc.want.err, err, test.EquateErrors()); diff != "" {
@@ -591,7 +576,7 @@ func TestDelete(t *testing.T) {
 				cr: certificateAuthority(withCertificateAuthorityArn()),
 			},
 			want: want{
-				cr: certificateAuthority(withConditions(corev1alpha1.Deleting())),
+				cr: certificateAuthority(withCertificateAuthorityArn(), withConditions(corev1alpha1.Deleting())),
 			},
 		},
 		"InValidInput": {

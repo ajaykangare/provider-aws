@@ -30,6 +30,7 @@ import (
 	runtimev1alpha1 "github.com/crossplane/crossplane-runtime/apis/core/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
@@ -39,16 +40,17 @@ import (
 )
 
 const (
+	errPendingStatus    = "The managed resource in pending status, please open the ACM Private CA console https://console.aws.amazon.com/acm-pca/home install CA certificate "
 	errUnexpectedObject = "The managed resource is not an ACMPCA resource"
 	errClient           = "cannot create a new ACMPCA client"
 	errGet              = "failed to get ACMPCA with name"
 	errCreate           = "failed to create the ACMPCA resource"
 	errDelete           = "failed to delete the ACMPCA resource"
-	// errUpdate           = "failed to update the ACMPCA resource"
-	errSDK = "empty ACMPCA received from ACMPCA API"
+	errSDK              = "empty ACMPCA received from ACMPCA API"
 
-	errKubeUpdateFailed = "cannot late initialize ACMPCA"
-	errUpToDateFailed   = "cannot check whether object is up-to-date"
+	errKubeUpdateFailed    = "cannot late initialize ACMPCA"
+	errUpToDateFailed      = "cannot check whether object is up-to-date"
+	errPersistExternalName = "failed to persist Certificate ARN"
 
 	errAddTagsFailed        = "cannot add tags to ACMPCA"
 	errListTagsFailed       = "failed to list tags for ACMPCA"
@@ -68,6 +70,7 @@ func SetupCertificateAuthority(mgr ctrl.Manager, l logging.Logger) error {
 			resource.ManagedKind(v1alpha1.CertificateAuthorityGroupVersionKind),
 			managed.WithExternalConnecter(&connector{client: mgr.GetClient(), newClientFn: acmpca.NewClient, awsConfigFn: utils.RetrieveAwsConfigFromProvider}),
 			managed.WithConnectionPublishers(),
+			managed.WithInitializers(),
 			managed.WithLogger(l.WithValues("controller", name)),
 			managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name)))))
 }
@@ -107,22 +110,28 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 		return managed.ExternalObservation{}, errors.New(errUnexpectedObject)
 	}
 
-	if cr.Status.AtProvider.CertificateAuthorityArn == "" {
+	if meta.GetExternalName(cr) == "" {
 		return managed.ExternalObservation{
 			ResourceExists: false,
 		}, nil
 	}
 
 	response, err := e.client.DescribeCertificateAuthorityRequest(&awsacmpca.DescribeCertificateAuthorityInput{
-		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+		CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 	}).Send(ctx)
 
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errGet)
+		return managed.ExternalObservation{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errGet)
 	}
 
 	if response.CertificateAuthority == nil {
 		return managed.ExternalObservation{}, errors.New(errSDK)
+	}
+
+	if response.CertificateAuthority.Status == awsacmpca.CertificateAuthorityStatusPendingCertificate {
+		return managed.ExternalObservation{
+			ResourceExists: true,
+		}, errors.New(errPendingStatus)
 	}
 
 	certificateAuthority := *response.CertificateAuthority
@@ -137,12 +146,14 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 
 	cr.SetConditions(runtimev1alpha1.Available())
 
+	cr.Status.AtProvider = acmpca.GenerateCertificateAuthorityExternalStatus(certificateAuthority, cr)
+
 	tags, err := e.client.ListTagsRequest(&awsacmpca.ListTagsInput{
-		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+		CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 	}).Send(ctx)
 
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errListTagsFailed)
+		return managed.ExternalObservation{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errListTagsFailed)
 	}
 
 	upToDate := acmpca.IsCertificateAuthorityUpToDate(cr, certificateAuthority, tags.Tags)
@@ -169,15 +180,17 @@ func (e *external) Create(ctx context.Context, mgd resource.Managed) (managed.Ex
 
 	if response != nil {
 
-		cr.Status.AtProvider.CertificateAuthorityArn = aws.StringValue(response.CreateCertificateAuthorityOutput.CertificateAuthorityArn)
-		cr.Status.AtProvider.RenewalPermission = cr.Spec.ForProvider.CertificateRenewalPermissionAllow
+		meta.SetExternalName(cr, aws.StringValue(response.CreateCertificateAuthorityOutput.CertificateAuthorityArn))
+		if err = e.kube.Update(ctx, cr); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, errPersistExternalName)
+		}
 
 		if cr.Spec.ForProvider.CertificateRenewalPermissionAllow {
 
 			_, err = e.client.CreatePermissionRequest(&awsacmpca.CreatePermissionInput{
 
 				Actions:                 []awsacmpca.ActionType{awsacmpca.ActionTypeIssueCertificate, awsacmpca.ActionTypeGetCertificate, awsacmpca.ActionTypeListPermissions},
-				CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 				Principal:               aws.String("acm.amazonaws.com"),
 			}).Send(ctx)
 
@@ -203,7 +216,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 
 			_, err := e.client.CreatePermissionRequest(&awsacmpca.CreatePermissionInput{
 				Actions:                 []awsacmpca.ActionType{awsacmpca.ActionTypeIssueCertificate, awsacmpca.ActionTypeGetCertificate, awsacmpca.ActionTypeListPermissions},
-				CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 				Principal:               aws.String("acm.amazonaws.com"),
 			}).Send(ctx)
 
@@ -213,7 +226,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 
 		} else {
 			_, err := e.client.DeletePermissionRequest(&awsacmpca.DeletePermissionInput{
-				CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 				Principal:               aws.String("acm.amazonaws.com"),
 			}).Send(ctx)
 
@@ -232,16 +245,16 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		}
 
 		currentTags, err := e.client.ListTagsRequest(&awsacmpca.ListTagsInput{
-			CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+			CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 		}).Send(ctx)
 
 		if err != nil {
-			return managed.ExternalUpdate{}, errors.Wrap(err, errListTagsFailed)
+			return managed.ExternalUpdate{}, errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errListTagsFailed)
 		}
 
 		if len(tags) < len(currentTags.Tags) {
 			_, err := e.client.UntagCertificateAuthorityRequest(&awsacmpca.UntagCertificateAuthorityInput{
-				CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 				Tags:                    currentTags.Tags,
 			}).Send(ctx)
 			if err != nil {
@@ -249,7 +262,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 			}
 		}
 		_, err = e.client.TagCertificateAuthorityRequest(&awsacmpca.TagCertificateAuthorityInput{
-			CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+			CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 			Tags:                    tags,
 		}).Send(ctx)
 		if err != nil {
@@ -274,17 +287,17 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 	cr.Status.SetConditions(runtimev1alpha1.Deleting())
 
 	response, err := e.client.DescribeCertificateAuthorityRequest(&awsacmpca.DescribeCertificateAuthorityInput{
-		CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+		CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 	}).Send(ctx)
 
 	if err != nil {
-		return errors.Wrap(err, errDelete)
+		return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
 	}
 
 	if response != nil {
 		if response.CertificateAuthority.Status == awsacmpca.CertificateAuthorityStatusActive {
 			_, err = e.client.UpdateCertificateAuthorityRequest(&awsacmpca.UpdateCertificateAuthorityInput{
-				CertificateAuthorityArn: aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
 				Status:                  awsacmpca.CertificateAuthorityStatusDisabled,
 			}).Send(ctx)
 
@@ -295,13 +308,9 @@ func (e *external) Delete(ctx context.Context, mgd resource.Managed) error {
 	}
 
 	_, err = e.client.DeleteCertificateAuthorityRequest(&awsacmpca.DeleteCertificateAuthorityInput{
-		CertificateAuthorityArn:     aws.String(cr.Status.AtProvider.CertificateAuthorityArn),
+		CertificateAuthorityArn:     aws.String(meta.GetExternalName(cr)),
 		PermanentDeletionTimeInDays: cr.Spec.ForProvider.PermanentDeletionTimeInDays,
 	}).Send(ctx)
 
-	if err == nil {
-		cr.Status.AtProvider.CertificateAuthorityArn = ""
-	}
-
-	return errors.Wrap(err, errDelete)
+	return errors.Wrap(resource.Ignore(acmpca.IsErrorNotFound, err), errDelete)
 }

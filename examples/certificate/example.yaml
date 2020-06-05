@@ -2,8 +2,6 @@ apiVersion: certificatemanager.aws.crossplane.io/v1alpha1
 kind: CertificateAuthority
 metadata:
   name: example
-  annotations:
-    crossplane.io/external-name: example
 spec:
   forProvider:
     type: root
