@@ -22,10 +22,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/crossplane/provider-aws/pkg/controller/cache"
-<<<<<<< HEAD
 	"github.com/crossplane/provider-aws/pkg/controller/cache/cachesubnetgroup"
-=======
->>>>>>> Added code for Create and Delete method
 	"github.com/crossplane/provider-aws/pkg/controller/certificatemanager"
 	"github.com/crossplane/provider-aws/pkg/controller/compute"
 	"github.com/crossplane/provider-aws/pkg/controller/database"
@@ -81,8 +78,8 @@ func Setup(mgr ctrl.Manager, l logging.Logger) error {
 		internetgateway.SetupInternetGateway,
 		routetable.SetupRouteTable,
 		dbsubnetgroup.SetupDBSubnetGroup,
-		dynamodb.SetupDynamoTable,
 		certificatemanager.SetupCertificateAuthority,
+		dynamodb.SetupDynamoTable,
 	} {
 		if err := setup(mgr, l); err != nil {
 			return err

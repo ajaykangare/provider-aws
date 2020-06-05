@@ -444,7 +444,7 @@ func IsUpToDate(p v1beta1.RDSInstanceParameters, db rds.DBInstance) (bool, error
 		return false, err
 	}
 	return cmp.Equal(&v1beta1.RDSInstanceParameters{}, patch, cmpopts.EquateEmpty(),
-		cmpopts.IgnoreInterfaces(struct{ resource.AttributeReferencer }{}),
+		cmpopts.IgnoreTypes(&v1alpha1.Reference{}, &v1alpha1.Selector{}),
 		cmpopts.IgnoreFields(v1beta1.RDSInstanceParameters{}, "Tags"),
 		cmpopts.IgnoreFields(v1beta1.RDSInstanceParameters{}, "SkipFinalSnapshotBeforeDeletion")), nil
 }
