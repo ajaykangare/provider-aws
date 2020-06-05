@@ -57,6 +57,8 @@ const (
 	errRemoveTagsFailed     = "failed to remove tags for ACMPCA"
 	errCertificateAuthority = "failed to update the ACMPCA resource"
 	errPermissionFailed     = "failed to update ACMPCA permission"
+
+	principal = "acm.amazonaws.com"
 )
 
 // SetupCertificateAuthority adds a controller that reconciles ACMPCA.
@@ -191,7 +193,7 @@ func (e *external) Create(ctx context.Context, mgd resource.Managed) (managed.Ex
 
 				Actions:                 []awsacmpca.ActionType{awsacmpca.ActionTypeIssueCertificate, awsacmpca.ActionTypeGetCertificate, awsacmpca.ActionTypeListPermissions},
 				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
-				Principal:               aws.String("acm.amazonaws.com"),
+				Principal:               aws.String(principal),
 			}).Send(ctx)
 
 		}
@@ -217,7 +219,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 			_, err := e.client.CreatePermissionRequest(&awsacmpca.CreatePermissionInput{
 				Actions:                 []awsacmpca.ActionType{awsacmpca.ActionTypeIssueCertificate, awsacmpca.ActionTypeGetCertificate, awsacmpca.ActionTypeListPermissions},
 				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
-				Principal:               aws.String("acm.amazonaws.com"),
+				Principal:               aws.String(principal),
 			}).Send(ctx)
 
 			if err != nil {
@@ -227,7 +229,7 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 		} else {
 			_, err := e.client.DeletePermissionRequest(&awsacmpca.DeletePermissionInput{
 				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
-				Principal:               aws.String("acm.amazonaws.com"),
+				Principal:               aws.String(principal),
 			}).Send(ctx)
 
 			if err != nil {
