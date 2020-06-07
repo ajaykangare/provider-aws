@@ -82,7 +82,6 @@ func Setup(mgr ctrl.Manager, l logging.Logger) error {
 		certificateauthority.SetupCertificateAuthority,
 		certificate.SetupCertificate,
 		dynamodb.SetupDynamoTable,
-		certificatemanager.SetupCertificateAuthority,
 	} {
 		if err := setup(mgr, l); err != nil {
 			return err
