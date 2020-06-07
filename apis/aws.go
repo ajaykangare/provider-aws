@@ -45,6 +45,7 @@ func init() {
 		networkv1alpha3.SchemeBuilder.AddToScheme,
 		awsv1alpha3.SchemeBuilder.AddToScheme,
 		storagev1alpha3.SchemeBuilder.AddToScheme,
+		certificatemanagerv1alpha1.SchemeBuilder.AddToScheme,
 		databasev1alpha1.SchemeBuilder.AddToScheme,
 		certificatemanagerv1alpha1.SchemeBuilder.AddToScheme,
 	)
