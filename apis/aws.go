@@ -47,7 +47,6 @@ func init() {
 		storagev1alpha3.SchemeBuilder.AddToScheme,
 		certificatemanagerv1alpha1.SchemeBuilder.AddToScheme,
 		databasev1alpha1.SchemeBuilder.AddToScheme,
-		certificatemanagerv1alpha1.SchemeBuilder.AddToScheme,
 	)
 }
 
