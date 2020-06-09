@@ -1,0 +1,10 @@
+apiVersion: certificatemanager.aws.crossplane.io/v1alpha1
+kind: CertificateAuthorityPermission
+metadata:
+  name: example
+spec:
+  forProvider:
+    certificateAuthorityArn: arn:aws:acm-pca:us-west-2:867429062264:certificate-authority/6e02e421-a787-46bc-97b7-dfe5978feb06
+  reclaimPolicy: Delete
+  providerRef:
+    name: example

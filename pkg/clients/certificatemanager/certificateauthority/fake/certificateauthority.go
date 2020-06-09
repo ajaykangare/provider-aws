@@ -28,9 +28,7 @@ var _ clientset.Client = (*MockCertificateAuthorityClient)(nil)
 // MockCertificateAuthorityClient is a type that implements all the methods for Certificate Authority Client interface
 type MockCertificateAuthorityClient struct {
 	MockCreateCertificateAuthorityRequest   func(*acmpca.CreateCertificateAuthorityInput) acmpca.CreateCertificateAuthorityRequest
-	MockCreatePermissionRequest             func(*acmpca.CreatePermissionInput) acmpca.CreatePermissionRequest
 	MockDeleteCertificateAuthorityRequest   func(*acmpca.DeleteCertificateAuthorityInput) acmpca.DeleteCertificateAuthorityRequest
-	MockDeletePermissionRequest             func(*acmpca.DeletePermissionInput) acmpca.DeletePermissionRequest
 	MockUpdateCertificateAuthorityRequest   func(*acmpca.UpdateCertificateAuthorityInput) acmpca.UpdateCertificateAuthorityRequest
 	MockDescribeCertificateAuthorityRequest func(*acmpca.DescribeCertificateAuthorityInput) acmpca.DescribeCertificateAuthorityRequest
 	MockListTagsRequest                     func(*acmpca.ListTagsInput) acmpca.ListTagsRequest
@@ -41,11 +39,6 @@ type MockCertificateAuthorityClient struct {
 // CreateCertificateAuthorityRequest mocks CreateCertificateAuthorityRequest method
 func (m *MockCertificateAuthorityClient) CreateCertificateAuthorityRequest(input *acmpca.CreateCertificateAuthorityInput) acmpca.CreateCertificateAuthorityRequest {
 	return m.MockCreateCertificateAuthorityRequest(input)
-}
-
-// CreatePermissionRequest mocks CreatePermissionRequest method
-func (m *MockCertificateAuthorityClient) CreatePermissionRequest(input *acmpca.CreatePermissionInput) acmpca.CreatePermissionRequest {
-	return m.MockCreatePermissionRequest(input)
 }
 
 // DeleteCertificateAuthorityRequest mocks DeleteCertificateAuthorityRequest method
@@ -76,9 +69,4 @@ func (m *MockCertificateAuthorityClient) DescribeCertificateAuthorityRequest(inp
 // UpdateCertificateAuthorityRequest mocks UpdateCertificateAuthorityRequest method
 func (m *MockCertificateAuthorityClient) UpdateCertificateAuthorityRequest(input *acmpca.UpdateCertificateAuthorityInput) acmpca.UpdateCertificateAuthorityRequest {
 	return m.MockUpdateCertificateAuthorityRequest(input)
-}
-
-// DeletePermissionRequest mocks DeletePermissionRequest method
-func (m *MockCertificateAuthorityClient) DeletePermissionRequest(input *acmpca.DeletePermissionInput) acmpca.DeletePermissionRequest {
-	return m.MockDeletePermissionRequest(input)
 }

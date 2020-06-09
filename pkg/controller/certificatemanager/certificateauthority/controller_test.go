@@ -326,11 +326,6 @@ func TestCreate(t *testing.T) {
 							}},
 						}
 					},
-					MockCreatePermissionRequest: func(input *awsacmpca.CreatePermissionInput) awsacmpca.CreatePermissionRequest {
-						return awsacmpca.CreatePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.CreatePermissionOutput{}},
-						}
-					},
 				},
 				cr: certificateAuthority(withCertificateAuthorityArn()),
 			},
@@ -352,11 +347,6 @@ func TestCreate(t *testing.T) {
 				acmpca: &fake.MockCertificateAuthorityClient{
 					MockCreateCertificateAuthorityRequest: func(input *awsacmpca.CreateCertificateAuthorityInput) awsacmpca.CreateCertificateAuthorityRequest {
 						return awsacmpca.CreateCertificateAuthorityRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
-						}
-					},
-					MockCreatePermissionRequest: func(input *awsacmpca.CreatePermissionInput) awsacmpca.CreatePermissionRequest {
-						return awsacmpca.CreatePermissionRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
 						}
 					},
@@ -408,11 +398,6 @@ func TestUpdate(t *testing.T) {
 		"VaildInput": {
 			args: args{
 				acmpca: &fake.MockCertificateAuthorityClient{
-					MockDeletePermissionRequest: func(*awsacmpca.DeletePermissionInput) awsacmpca.DeletePermissionRequest {
-						return awsacmpca.DeletePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.DeletePermissionOutput{}},
-						}
-					},
 					MockDescribeCertificateAuthorityRequest: func(*awsacmpca.DescribeCertificateAuthorityInput) awsacmpca.DescribeCertificateAuthorityRequest {
 						return awsacmpca.DescribeCertificateAuthorityRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.DescribeCertificateAuthorityOutput{
@@ -446,11 +431,6 @@ func TestUpdate(t *testing.T) {
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.TagCertificateAuthorityOutput{}},
 						}
 					},
-					MockCreatePermissionRequest: func(input *awsacmpca.CreatePermissionInput) awsacmpca.CreatePermissionRequest {
-						return awsacmpca.CreatePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.CreatePermissionOutput{}},
-						}
-					},
 				},
 				cr: certificateAuthority(),
 			},
@@ -470,11 +450,6 @@ func TestUpdate(t *testing.T) {
 		"ClientUpdateCertificateDescribeError": {
 			args: args{
 				acmpca: &fake.MockCertificateAuthorityClient{
-					MockDeletePermissionRequest: func(*awsacmpca.DeletePermissionInput) awsacmpca.DeletePermissionRequest {
-						return awsacmpca.DeletePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
-						}
-					},
 					MockDescribeCertificateAuthorityRequest: func(*awsacmpca.DescribeCertificateAuthorityInput) awsacmpca.DescribeCertificateAuthorityRequest {
 						return awsacmpca.DescribeCertificateAuthorityRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Error: errBoom},
@@ -498,11 +473,6 @@ func TestUpdate(t *testing.T) {
 					MockTagCertificateAuthorityRequest: func(input *awsacmpca.TagCertificateAuthorityInput) awsacmpca.TagCertificateAuthorityRequest {
 						return awsacmpca.TagCertificateAuthorityRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.TagCertificateAuthorityOutput{}},
-						}
-					},
-					MockCreatePermissionRequest: func(input *awsacmpca.CreatePermissionInput) awsacmpca.CreatePermissionRequest {
-						return awsacmpca.CreatePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.CreatePermissionOutput{}},
 						}
 					},
 				},
@@ -550,11 +520,6 @@ func TestDelete(t *testing.T) {
 					MockDeleteCertificateAuthorityRequest: func(*awsacmpca.DeleteCertificateAuthorityInput) awsacmpca.DeleteCertificateAuthorityRequest {
 						return awsacmpca.DeleteCertificateAuthorityRequest{
 							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.DeleteCertificateAuthorityOutput{}},
-						}
-					},
-					MockDeletePermissionRequest: func(*awsacmpca.DeletePermissionInput) awsacmpca.DeletePermissionRequest {
-						return awsacmpca.DeletePermissionRequest{
-							Request: &aws.Request{HTTPRequest: &http.Request{}, Data: &awsacmpca.DeletePermissionOutput{}},
 						}
 					},
 					MockDescribeCertificateAuthorityRequest: func(*awsacmpca.DescribeCertificateAuthorityInput) awsacmpca.DescribeCertificateAuthorityRequest {
