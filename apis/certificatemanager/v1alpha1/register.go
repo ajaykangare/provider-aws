@@ -13,15 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
-// NOTE: Boilerplate only. Ignore this file.
-
-// Package v1alpha1 contains API Schema definitions for the certificatemanager v1alpha1 API group
-// +k8s:openapi-gen=true
-// +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.com/crossplane/provider-aws/pkg/apis/certificatemanager
-// +k8s:defaulter-gen=TypeMeta
+// +kubebuilder:object:generate=true
 // +groupName=certificatemanager.aws.crossplane.io
+// +versionName=v1alpha1
+
 package v1alpha1
 
 import (
