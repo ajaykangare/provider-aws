@@ -15,7 +15,6 @@ var (
 	customCname                         = "soemcustomname"
 	revocationConfigurationEnabled      = true
 	revocationConfigurationEnabledfalse = false
-	renewalPermission                   = true
 	s3BucketName                        = "somes3bucketname"
 	commonName                          = "someCommonName"
 	country                             = "someCountry"
@@ -328,9 +327,8 @@ func TestIsCertificateAuthorityUpToDate(t *testing.T) {
 				p: &v1alpha1.CertificateAuthority{
 					Spec: v1alpha1.CertificateAuthoritySpec{
 						ForProvider: v1alpha1.CertificateAuthorityParameters{
-							CustomCname:                       aws.String(customCname),
-							S3BucketName:                      aws.String(s3BucketName),
-							CertificateRenewalPermissionAllow: true,
+							CustomCname:  aws.String(customCname),
+							S3BucketName: aws.String(s3BucketName),
 							Tags: []v1alpha1.Tag{{
 								Key:   "key1",
 								Value: "value1",
@@ -340,7 +338,6 @@ func TestIsCertificateAuthorityUpToDate(t *testing.T) {
 					Status: v1alpha1.CertificateAuthorityStatus{
 						AtProvider: v1alpha1.CertificateAuthorityExternalStatus{
 							CertificateAuthorityArn: certificateAuthorityArn,
-							RenewalPermission:       renewalPermission,
 						},
 					},
 				},
@@ -364,15 +361,13 @@ func TestIsCertificateAuthorityUpToDate(t *testing.T) {
 				p: &v1alpha1.CertificateAuthority{
 					Spec: v1alpha1.CertificateAuthoritySpec{
 						ForProvider: v1alpha1.CertificateAuthorityParameters{
-							CustomCname:                       aws.String(customCname),
-							S3BucketName:                      aws.String(s3BucketName),
-							CertificateRenewalPermissionAllow: true,
+							CustomCname:  aws.String(customCname),
+							S3BucketName: aws.String(s3BucketName),
 						},
 					},
 					Status: v1alpha1.CertificateAuthorityStatus{
 						AtProvider: v1alpha1.CertificateAuthorityExternalStatus{
 							CertificateAuthorityArn: certificateAuthorityArn,
-							RenewalPermission:       renewalPermission,
 						},
 					},
 				},

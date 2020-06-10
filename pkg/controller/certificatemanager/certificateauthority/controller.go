@@ -56,9 +56,9 @@ const (
 	errListTagsFailed       = "failed to list tags for ACMPCA"
 	errRemoveTagsFailed     = "failed to remove tags for ACMPCA"
 	errCertificateAuthority = "failed to update the ACMPCA resource"
-	errPermissionFailed     = "failed to update ACMPCA permission"
+	// errPermissionFailed     = "failed to update ACMPCA permission"
 
-	principal = "acm.amazonaws.com"
+	// principal = "acm.amazonaws.com"
 )
 
 // SetupCertificateAuthority adds a controller that reconciles ACMPCA.
@@ -182,21 +182,9 @@ func (e *external) Create(ctx context.Context, mgd resource.Managed) (managed.Ex
 	response, err := e.client.CreateCertificateAuthorityRequest(acmpca.GenerateCreateCertificateAuthorityInput(&cr.Spec.ForProvider)).Send(ctx)
 
 	if response != nil {
-
 		meta.SetExternalName(cr, aws.StringValue(response.CreateCertificateAuthorityOutput.CertificateAuthorityArn))
 		if err = e.kube.Update(ctx, cr); err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errPersistExternalName)
-		}
-
-		if cr.Spec.ForProvider.CertificateRenewalPermissionAllow {
-
-			_, err = e.client.CreatePermissionRequest(&awsacmpca.CreatePermissionInput{
-
-				Actions:                 []awsacmpca.ActionType{awsacmpca.ActionTypeIssueCertificate, awsacmpca.ActionTypeGetCertificate, awsacmpca.ActionTypeListPermissions},
-				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
-				Principal:               aws.String(principal),
-			}).Send(ctx)
-
 		}
 	}
 
@@ -209,35 +197,6 @@ func (e *external) Update(ctx context.Context, mgd resource.Managed) (managed.Ex
 	cr, ok := mgd.(*v1alpha1.CertificateAuthority)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errUnexpectedObject)
-	}
-
-	if cr.Spec.ForProvider.CertificateRenewalPermissionAllow != cr.Status.AtProvider.RenewalPermission {
-
-		cr.Status.AtProvider.RenewalPermission = cr.Spec.ForProvider.CertificateRenewalPermissionAllow
-
-		if cr.Spec.ForProvider.CertificateRenewalPermissionAllow {
-
-			_, err := e.client.CreatePermissionRequest(&awsacmpca.CreatePermissionInput{
-				Actions:                 []awsacmpca.ActionType{awsacmpca.ActionTypeIssueCertificate, awsacmpca.ActionTypeGetCertificate, awsacmpca.ActionTypeListPermissions},
-				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
-				Principal:               aws.String(principal),
-			}).Send(ctx)
-
-			if err != nil {
-				return managed.ExternalUpdate{}, errors.Wrap(err, errPermissionFailed)
-			}
-
-		} else {
-			_, err := e.client.DeletePermissionRequest(&awsacmpca.DeletePermissionInput{
-				CertificateAuthorityArn: aws.String(meta.GetExternalName(cr)),
-				Principal:               aws.String(principal),
-			}).Send(ctx)
-
-			if err != nil {
-				return managed.ExternalUpdate{}, errors.Wrap(err, errPermissionFailed)
-			}
-		}
-
 	}
 
 	if len(cr.Spec.ForProvider.Tags) > 0 {

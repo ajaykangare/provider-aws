@@ -43,7 +43,6 @@ type CertificateAuthoritySpec struct {
 type CertificateAuthorityExternalStatus struct {
 	// String that contains the ARN of the issued certificate Authority
 	CertificateAuthorityArn string `json:"certificateAuthorityArn"`
-	RenewalPermission       bool   `json:"renewalPermission"`
 }
 
 // An CertificateAuthorityStatus represents the observed state of an CertificateAuthority manager.
@@ -55,13 +54,13 @@ type CertificateAuthorityStatus struct {
 // CertificateAuthorityParameters defines the desired state of an AWS CertificateAuthority.
 type CertificateAuthorityParameters struct {
 	// Type of the certificate authority
-	// +kubebuilder:validation:Enum=root;subordinate
+	// +kubebuilder:validation:Enum=ROOT;SUBORINATE
 	Type acmpca.CertificateAuthorityType `json:"type"`
 
 	// Status of the certificate authority
 	// +optional
-	// +kubebuilder:validation:Enum=creating;pending_certificate;active;deleted;disabled;expired;failed
-	Status acmpca.CertificateAuthorityStatus `json:"status"`
+	// +kubebuilder:validation:Enum=CREATING;PENDING_CERTIFICATE;ACTIVE;DELETED;DISABLED;EXPIRED;FAILED
+	Status acmpca.CertificateAuthorityStatus `json:"status,omitempty"`
 
 	// Token to distinguish between calls to RequestCertificate.
 	// +optional
@@ -92,11 +91,11 @@ type CertificateAuthorityParameters struct {
 	CommonName *string `json:"commonName"`
 
 	// Type of the public key algorithm
-	// +kubebuilder:validation:Enum=rsa2048;rsa4096;ecprime256v1;ecsecp384r1
+	// +kubebuilder:validation:Enum=RSA_2048;EC_secp384r1;EC_prime256v1;RSA_4096
 	KeyAlgorithm acmpca.KeyAlgorithm `json:"keyAlgorithm"`
 
 	// Algorithm that private CA uses to sign certificate requests
-	// +kubebuilder:validation:Enum=sha256withecdsa;sha384withecdsa;sha512withecdsa;sha256withrsa;sha384withrsa;sha512withrsa
+	// +kubebuilder:validation:Enum=SHA512WITHECDSA;SHA256WITHECDSA;SHA384WITHECDSA;SHA512WITHRSA;SHA256WITHRSA;SHA384WITHRSA
 	SigningAlgorithm acmpca.SigningAlgorithm `json:"signingAlgorithm"`
 
 	// Boolean value that specifies certificate revocation
@@ -115,9 +114,6 @@ type CertificateAuthorityParameters struct {
 	// The number of days to make a CA restorable after it has been deleted
 	// +optional
 	PermanentDeletionTimeInDays *int64 `json:"permanentDeletionTimeInDays,omitempty"`
-
-	// The CertificateRenewalPermissionAllow decides Permissions for ACM renewals
-	CertificateRenewalPermissionAllow bool `json:"certificateRenewalPermissionAllow"`
 
 	// Disambiguating information for the certificate subject.
 	// +optional

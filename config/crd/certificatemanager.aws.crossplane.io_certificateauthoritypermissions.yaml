@@ -6,15 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
-  name: certificateauthorities.certificatemanager.aws.crossplane.io
+  name: certificateauthoritypermissions.certificatemanager.aws.crossplane.io
 spec:
   additionalPrinterColumns:
-  - JSONPath: .spec.forProvider.type
-    name: TYPE
-    type: string
-  - JSONPath: .spec.forProvider.status
-    name: STATUS
-    type: string
   - JSONPath: .status.conditions[?(@.type=='Ready')].status
     name: READY
     type: string
@@ -26,17 +20,17 @@ spec:
     type: date
   group: certificatemanager.aws.crossplane.io
   names:
-    kind: CertificateAuthority
-    listKind: CertificateAuthorityList
-    plural: certificateauthorities
-    singular: certificateauthority
+    kind: CertificateAuthorityPermission
+    listKind: CertificateAuthorityPermissionList
+    plural: certificateauthoritypermissions
+    singular: certificateauthoritypermission
   scope: Cluster
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: CertificateAuthority is a managed resource that represents an AWS
-        CertificateAuthority Manager.
+      description: CertificateAuthorityPermission is a managed resource that represents
+        an AWS CertificateAuthorityPermission Manager.
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -51,7 +45,8 @@ spec:
         metadata:
           type: object
         spec:
-          description: CertificateAuthoritySpec defines the desired state of CertificateAuthority
+          description: CertificateAuthorityPermissionSpec defines the desired state
+            of CertificateAuthorityPermission
           properties:
             claimRef:
               description: ClaimReference specifies the resource claim to which this
@@ -131,138 +126,50 @@ spec:
                   type: string
               type: object
             forProvider:
-              description: CertificateAuthorityParameters defines the desired state
-                of an AWS CertificateAuthority.
+              description: CertificateAuthorityPermissionParameters defines the desired
+                state of an AWS CertificateAuthority.
               properties:
-                commonName:
-                  description: FQDN associated with the certificate subject
-                  type: string
-                country:
-                  description: Two-digit code that specifies the country
-                  type: string
-                customCname:
-                  description: Alias for the CRL distribution point
-                  type: string
-                distinguishedNameQualifier:
-                  description: Disambiguating information for the certificate subject.
-                  type: string
-                expirationInDays:
-                  description: Number of days until a certificate expires
-                  format: int64
-                  type: integer
-                generationQualifier:
-                  description: Typically a qualifier appended to the name of an individual
-                  type: string
-                givenName:
-                  description: First name
-                  type: string
-                idempotencyToken:
-                  description: Token to distinguish between calls to RequestCertificate.
-                  type: string
-                initials:
-                  description: Concatenation of first letter of the GivenName, Middle
-                    name and SurName.
-                  type: string
-                keyAlgorithm:
-                  description: Type of the public key algorithm
-                  enum:
-                  - RSA_2048
-                  - EC_secp384r1
-                  - EC_prime256v1
-                  - RSA_4096
-                  type: string
-                locality:
-                  description: The locality such as a city or town
-                  type: string
-                organization:
-                  description: Organization legal name
-                  type: string
-                organizationalUnit:
-                  description: Organization's subdivision or unit
-                  type: string
-                permanentDeletionTimeInDays:
-                  description: The number of days to make a CA restorable after it
-                    has been deleted
-                  format: int64
-                  type: integer
-                pseudonym:
-                  description: Shortened version of a longer GivenName
-                  type: string
-                revocationConfigurationEnabled:
-                  description: Boolean value that specifies certificate revocation
-                  type: boolean
-                s3BucketName:
-                  description: Name of the S3 bucket that contains the CRL
-                  type: string
-                serialNumber:
-                  description: The certificate serial number.
-                  type: string
-                signingAlgorithm:
-                  description: Algorithm that private CA uses to sign certificate
-                    requests
-                  enum:
-                  - SHA512WITHECDSA
-                  - SHA256WITHECDSA
-                  - SHA384WITHECDSA
-                  - SHA512WITHRSA
-                  - SHA256WITHRSA
-                  - SHA384WITHRSA
-                  type: string
-                state:
-                  description: State in which the subject of the certificate is located
-                  type: string
-                status:
-                  description: Status of the certificate authority
-                  enum:
-                  - CREATING
-                  - PENDING_CERTIFICATE
-                  - ACTIVE
-                  - DELETED
-                  - DISABLED
-                  - EXPIRED
-                  - FAILED
-                  type: string
-                surname:
-                  description: Surname
-                  type: string
-                tags:
-                  description: One or more resource tags to associate with the certificateAuthority.
+                actions:
+                  description: The actions that the specified AWS service principal
+                    can use.
                   items:
-                    description: Tag represents user-provided metadata that can be
-                      associated
-                    properties:
-                      key:
-                        description: The key name that can be used to look up or retrieve
-                          the associated value.
-                        type: string
-                      value:
-                        description: The value associated with this tag.
-                        type: string
-                    required:
-                    - key
-                    type: object
+                    type: string
                   type: array
-                title:
-                  description: Title
+                certificateAuthorityArn:
+                  description: The Amazon Resource Name (ARN) of the private certificate
+                    authority (CA)that will be used to issue the certificate.
                   type: string
-                type:
-                  description: Type of the certificate authority
-                  enum:
-                  - ROOT
-                  - SUBORINATE
+                certificateAuthorityArnRef:
+                  description: CertificateAuthorityArnRef references an CertificateAuthority
+                    to retrieve its Arn
+                  properties:
+                    name:
+                      description: Name of the referenced object.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                certificateAuthorityArnSelector:
+                  description: CertificateAuthorityArnSelector selects a reference
+                    to an CertificateAuthority to retrieve its Arn
+                  properties:
+                    matchControllerRef:
+                      description: MatchControllerRef ensures an object with the same
+                        controller reference as the selecting object is selected.
+                      type: boolean
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      description: MatchLabels ensures an object with matching labels
+                        is selected.
+                      type: object
+                  type: object
+                principal:
+                  description: The AWS Service or identity
                   type: string
-              required:
-              - commonName
-              - country
-              - keyAlgorithm
-              - locality
-              - organization
-              - organizationalUnit
-              - revocationConfigurationEnabled
-              - s3BucketName
-              - signingAlgorithm
-              - state
-              - type
+                sourceAccount:
+                  description: Calling Account ID
+                  type: string
               type: object
             providerRef:
               description: ProviderReference specifies the provider that will be used
@@ -338,20 +245,9 @@ spec:
           - providerRef
           type: object
         status:
-          description: An CertificateAuthorityStatus represents the observed state
-            of an CertificateAuthority manager.
+          description: An CertificateAuthorityPermissionStatus represents the observed
+            state of an Certificate Authority Permission manager.
           properties:
-            atProvider:
-              description: CertificateAuthorityExternalStatus keeps the state of external
-                resource
-              properties:
-                certificateAuthorityArn:
-                  description: String that contains the ARN of the issued certificate
-                    Authority
-                  type: string
-              required:
-              - certificateAuthorityArn
-              type: object
             bindingPhase:
               description: Phase represents the binding phase of a managed resource
                 or claim. Unbindable resources cannot be bound, typically because
@@ -397,8 +293,6 @@ spec:
                 - type
                 type: object
               type: array
-          required:
-          - atProvider
           type: object
       type: object
   version: v1alpha1

@@ -13,9 +13,7 @@ import (
 // Client defines the CertificateManager operations
 type Client interface {
 	CreateCertificateAuthorityRequest(*acmpca.CreateCertificateAuthorityInput) acmpca.CreateCertificateAuthorityRequest
-	CreatePermissionRequest(*acmpca.CreatePermissionInput) acmpca.CreatePermissionRequest
 	DeleteCertificateAuthorityRequest(*acmpca.DeleteCertificateAuthorityInput) acmpca.DeleteCertificateAuthorityRequest
-	DeletePermissionRequest(*acmpca.DeletePermissionInput) acmpca.DeletePermissionRequest
 	UpdateCertificateAuthorityRequest(*acmpca.UpdateCertificateAuthorityInput) acmpca.UpdateCertificateAuthorityRequest
 	DescribeCertificateAuthorityRequest(*acmpca.DescribeCertificateAuthorityInput) acmpca.DescribeCertificateAuthorityRequest
 	ListTagsRequest(*acmpca.ListTagsInput) acmpca.ListTagsRequest
@@ -165,14 +163,13 @@ func IsCertificateAuthorityUpToDate(p *v1alpha1.CertificateAuthority, cd acmpca.
 		}
 	}
 
-	return p.Spec.ForProvider.CertificateRenewalPermissionAllow == p.Status.AtProvider.RenewalPermission
+	return true
 }
 
 // GenerateCertificateAuthorityExternalStatus is used to produce CertificateAuthorityExternalStatus from acmpca.certificateAuthorityStatus and v1alpha1.CertificateAuthority
 func GenerateCertificateAuthorityExternalStatus(certificateAuthority acmpca.CertificateAuthority, p *v1alpha1.CertificateAuthority) v1alpha1.CertificateAuthorityExternalStatus {
 	return v1alpha1.CertificateAuthorityExternalStatus{
 		CertificateAuthorityArn: aws.StringValue(certificateAuthority.Arn),
-		RenewalPermission:       p.Spec.ForProvider.CertificateRenewalPermissionAllow,
 	}
 }
 
